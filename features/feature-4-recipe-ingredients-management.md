@@ -80,149 +80,127 @@
 
 ### Functional Requirements
 
-- **FR-001**: All todo endpoints MUST require a valid session (`authenticate` middleware).
-- **FR-002**: A todo MUST belong to exactly one list and one user for its entire lifetime.
-- **FR-003**: Every todo read, update, and delete MUST scope with `userId: req.user.id`.
-- **FR-004**: Before creating a todo, the parent list MUST be owned by `req.user.id`; otherwise return `404`.
-- **FR-005**: On create, `userId` and `listId` MUST come from validated server context — ignore client spoofing of ownership.
-- **FR-006**: Todo titles MUST be trimmed before save; empty strings MUST be rejected.
-- **FR-007**: New todos MUST default to `completed: false`.
-- **FR-008**: Deleting a list MUST delete all todos in that list (cascade).
-- **FR-009**: Todos MUST be ordered incomplete first, then by `createdAt` ascending.
-- **FR-010**: This feature MUST extend the Feature 2 single-view lists UI: each list row gains an **Items** icon that opens a list-items `<v-dialog>`. Todo add/edit/delete use nested dialogs — no sidebar/main split.
+- **FR-001**: Create, update, and delete of recipe ingredients and recipe steps MUST require a valid session (`authenticateRoute`). Unauthenticated writes MUST return `401`.
+- **FR-002**: A recipe ingredient MUST belong to exactly one recipe for its entire lifetime. A recipe step MUST belong to exactly one recipe for its entire lifetime.
+- **FR-003**: Before creating a recipe ingredient or recipe step, the parent recipe MUST be owned by `req.user.id`; otherwise return `404`.
+- **FR-004**: Update and delete of a recipe ingredient or recipe step MUST succeed only when the parent recipe is owned by `req.user.id`; otherwise return `404`.
+- **FR-005**: Ownership MUST come from the authenticated session and the parent recipe — ignore any client-supplied `userId`.
+- **FR-006**: Creating a recipe ingredient MUST require `quantity` and `ingredientId`. Missing either MUST be rejected (`400`).
+- **FR-007**: `ingredientId` MUST refer to an existing catalog ingredient (Feature 2). Users MUST NOT create a new catalog ingredient from this flow.
+- **FR-008**: `recipeStepId` on a recipe ingredient MAY be omitted; if omitted it MUST be stored as null.
+- **FR-009**: Creating a recipe step MUST require `stepNumber` and `instruction`. Missing either MUST be rejected (`400`).
+- **FR-010**: `instruction` MUST be a non-empty string with max length 5000.
+- **FR-011**: Listing recipe ingredients for a recipe MUST return only that recipe’s ingredients, including catalog `name`, `unit`, and `pricePerUnit`.
+- **FR-012**: Listing recipe steps for a recipe MUST return only that recipe’s steps, ordered by `stepNumber` ascending.
+- **FR-013**: A step listing MAY include the recipe ingredients linked to that step.
+- **FR-014**: Users MUST be able to update a recipe ingredient’s `quantity` and `ingredientId`.
+- **FR-015**: Users MUST be able to delete a recipe ingredient from a recipe without deleting the catalog ingredient.
+- **FR-016**: Users MUST be able to update a recipe step’s `stepNumber` and `instruction`, and which recipe ingredients are linked to it.
+- **FR-017**: Users MUST be able to delete a recipe step.
+- **FR-018**: When adding or editing a step, the user MAY select zero or more of that recipe’s existing recipe ingredients; those rows MUST have `recipeStepId` set to that step.
+- **FR-019**: Deleting a recipe MUST delete all of its recipe steps and recipe ingredients (cascade).
+- **FR-020**: Recipe ingredients and steps MUST be managed on the Edit Recipe screen for an owned recipe: Ingredients and Steps sections, each with add/edit dialogs. Add/edit/delete MUST NOT live on the main recipe list.
 
 ---
 
 ## Assumptions
 
-- Features 1–2 MUST be merged to `dev` before implementing this feature (auth, lists, single-view dashboard, `MenuBar` with sign-out).
-- Due dates are out of scope (Feature 5).
+- Features 1–2-3 MUST be merged to `dev` before implementing this feature (auth, recipes, ingredients, single-view dashboard, `MenuBar` with sign-out).
+- Published recipes are out of scope (Feature 5).
 - No drag-and-drop reorder, search, or sharing.
 
 ## Edge Cases
 
-- Add todo with items dialog closed → no add UI visible; no API call until user opens items dialog and add-item dialog.
-- Empty todo title → client block and/or `400`.
-- Title longer than 255 characters → `400`.
-- Parent list or todo owned by another user → `404`.
-- Unauthenticated todo API → `401`.
+- Add/edit dialogs closed on Edit Recipe → no add UI on the main recipe list; no create API call until the user opens an add-ingredient or add-step dialog (FR-020).
+- Empty or missing ingredient `quantity` → client block and/or `400` (FR-006).
+- Missing `ingredientId` → client block and/or `400` (FR-006).
+- `ingredientId` that does not exist in the catalog → `400` or `404`; no recipe ingredient created (FR-007).
+- Empty or missing `stepNumber` or `instruction` → client block and/or `400` (FR-009).
+- `instruction` longer than 5000 characters → `400` (FR-010).
+- Parent recipe owned by another user (create, update, or delete ingredient/step) → `404` (FR-003, FR-004).
+- Client sends a spoofed `userId` on create → ignored; ownership stays on the authenticated user and parent recipe (FR-005).
+- Unauthenticated create/update/delete of a recipe ingredient or recipe step → `401` (FR-001).
+- Recipe ingredient created without `recipeStepId` → stored as `null` (FR-008).
+- Delete a recipe ingredient → catalog ingredient remains (FR-015).
+- Delete a recipe that has steps and ingredients → those steps and recipe ingredients are removed (FR-019).
 
 ## Success Criteria
 
 - **SC-001**: Every Gherkin scenario has at least one automated test before merge.
-- **SC-002**: User can add, view, complete, edit, and delete todos in an owned list end-to-end.
-- **SC-003**: Deleting a list removes its todos; `npm test` passes.
+- **SC-002**: A signed-in user can add, view, edit, and delete ingredients and steps on an owned recipe end-to-end from the Edit Recipe screen.
+- **SC-003**: Deleting a recipe removes its recipe steps and recipe ingredients; `npm test` passes.
+- **SC-004**: A user cannot create, update, or delete ingredients or steps on another user’s recipe (`404`).
 
 ---
 
 ## Data Ownership & Isolation
 
-Each user owns their todo items exclusively. Items are private to the user even when nested under a list.
 
-| Rule | Requirement |
-|------|-------------|
-| **Parent list check** | Todo operations require the parent list to belong to `req.user.id`. |
-| **Todo scope** | `GET`, `PUT`, and `DELETE` on todos match both `id` and `userId = req.user.id`. |
-| **Create scope** | `POST .../todos` succeeds only when `:listId` is owned by the caller; new todo `userId` is set from `req.user.id`. |
-| **Cross-user access** | If a todo or parent list belongs to another user, respond with `404` — never `403`. |
-| **UI scope** | The list-items dialog shows only todos for the list opened from that row, fetched via API for the signed-in user. |
-| **Implementation** | Use shared helpers (e.g. `getAccessibleListOrNull`, `getAccessibleTodoOrNull`) in `app/authorization/`. |
 
 ---
 
 ## API Requirements
 
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| `GET` | `/todo/lists/:listId/todos` | Yes | Fetch all todos in a list |
-| `POST` | `/todo/lists/:listId/todos` | Yes | Add a todo to a list |
-| `PUT` | `/todo/todos/:id` | Yes | Update a todo (title and/or `completed`) |
-| `DELETE` | `/todo/todos/:id` | Yes | Delete a todo owned by the caller |
 
-All endpoints enforce **list ownership** and **todo ownership** by the authenticated user. Cross-user access attempts return `404`.
-
-**Create todo request body:**
-```json
-{ "title": "Buy milk" }
-```
-
-**Todo success response** (`200` / `201`):
-```json
-{
-  "id": 10,
-  "listId": 1,
-  "title": "Buy milk",
-  "completed": false,
-  "userId": 42,
-  "createdAt": "2026-07-02T12:05:00.000Z",
-  "updatedAt": "2026-07-02T12:05:00.000Z"
-}
-```
-
-**Error response:** `{ "message": "Human-readable explanation." }` with appropriate HTTP status.  
-**Not found / not owned:** `404` (do not use `403`).
 
 ---
 
 ## Screen Requirements
 
-### [View: Application Dashboard] — route name `home`
-Extends the Feature 2 single-view lists dashboard. List CRUD (add/rename/delete list) is unchanged; this feature adds todo management via dialogs.
 
-**List rows (extend Feature 2)**
-*   Each list row adds an **Items** icon (`aria-label`: **Items** or **View items for &lt;list name&gt;**).
-*   Clicking **Items** opens a **list-items dialog** for that list.
-
-**List-items dialog**
-*   Title shows the list name (e.g. **Groceries — Items**).
-*   Primary action: **+ Add Item** opens a nested **add-item dialog** with a title `<v-text-field>` and **Add** / **Cancel**. **+ Add Item** and **Add** use class `oc-cta`.
-*   Todo rows: **checkbox** (`completed`), **name** (title text), **edit** icon, **delete** icon.
-*   **Edit:** edit icon opens a nested **edit-item dialog** with title field pre-filled; **Save** / **Cancel**.
-*   **Delete:** delete icon opens a confirmation `<v-dialog>`.
-*   Completed todos show struck-through or muted title styling.
-*   **Empty state:** **"No todos in this list yet."** when the list has zero todos.
-*   **Loading state:** skeleton or progress indicator while todos are fetching.
-*   **Error state:** `<v-alert type="error">` for API failures.
-*   **Close:** dialog has **Close** or equivalent to return to the lists view.
-
-**List switch behavior**
-*   User opens items dialog on one list row, closes it, then opens items on another row — each dialog load fetches only that list's todos.
-
-**Implementation note:** list-items, add-item, and edit-item dialogs may be child components; only one list-items dialog need be open at a time.
 
 ---
 
 ## Key Entities
 
-- **Todo**: task item with title and completion state; belongs to one list and one user.
-- **List**: parent container for todos (Feature 2); deleting a list removes its todos.
+- **RecipeIngredient**: a quantity of a catalog ingredient used on one recipe; optionally linked to one recipe step.
+- **RecipeStep**: a numbered instruction on one recipe; may reference that recipe’s ingredients.
+- **Recipe**: parent container for steps and recipe ingredients (Feature 3); deleting a recipe removes its steps and recipe ingredients.
+- **Ingredient**: shared catalog item with name, unit, and price (Feature 2); recipe ingredients reference it and MUST NOT delete it when a recipe line is removed.
+- **User**: account that owns recipes (Feature 1); ownership of steps and recipe ingredients is through the parent recipe.
 
 ---
 
 ## Data Model Requirements
 
-### `todos` table
+### `recipeSteps` table
 | Field | Type | Rules |
 |-------|------|-------|
 | `id` | INTEGER PK | Auto-increment |
-| `listId` | INTEGER FK | Required; references `lists.id`; cascade on list delete |
-| `title` | STRING | Required; max 255 chars |
-| `completed` | BOOLEAN | Default `false` |
-| `userId` | INTEGER FK | Required; references `users.id`; set from `req.user.id` on create |
+| `recipeId` | INTEGER FK | Required; references `recipes.id`; cascade on recipe delete |
+| `stepNumber` | INTEGER | Required |
+| `instruction` | STRING(5000) | Required; max 5000 chars |
 | `createdAt` | DATE | Sequelize timestamps |
 | `updatedAt` | DATE | Sequelize timestamps |
 
+### `recipeIngredients` table
+| Field | Type | Rules |
+|-------|------|-------|
+| `id` | INTEGER PK | Auto-increment |
+| `recipeId` | INTEGER FK | Required; references `recipes.id`; cascade on recipe delete |
+| `ingredientId` | INTEGER FK | Required; references `ingredients.id` |
+| `recipeStepId` | INTEGER FK | Optional; references `recipeSteps.id`; null if the line is not tied to a step |
+| `quantity` | FLOAT | Required |
+| `createdAt` | DATE | Sequelize timestamps |
+| `updatedAt` | DATE | Sequelize timestamps |
+
+No `userId` on either table. Ownership is through the parent recipe (`recipes.userId`).
+
 ### Associations (add to `models/index.js`)
-*   `List hasMany Todo` — `onDelete: CASCADE`
-*   `Todo belongsTo List`
-*   `User hasMany Todo`
-*   `Todo belongsTo User`
+*   `Recipe hasMany RecipeStep` — `onDelete: CASCADE`
+*   `RecipeStep belongsTo Recipe`
+*   `Recipe hasMany RecipeIngredient` — `onDelete: CASCADE`
+*   `RecipeIngredient belongsTo Recipe`
+*   `Ingredient hasMany RecipeIngredient`
+*   `RecipeIngredient belongsTo Ingredient`
+*   `RecipeStep hasMany RecipeIngredient`
+*   `RecipeIngredient belongsTo RecipeStep` — `recipeStepId` optional (`allowNull: true`)
 
 ---
 
 ## Acceptance Criteria (Gherkin)
 
-### US-3.1 — Add tasks to a list
+### US-4.1 — Add ingredients to a recipe
 
 #### Scenario: User adds a todo to a list via dialog
 *   **Given** I am signed in on the dashboard
@@ -254,7 +232,7 @@ Extends the Feature 2 single-view lists dashboard. List CRUD (add/rename/delete 
 
 ---
 
-### US-3.2 — View tasks in a list
+### US-4.2: Add steps to a recipe
 
 #### Scenario: List items dialog shows empty state
 *   **Given** I am signed in
@@ -283,7 +261,7 @@ Extends the Feature 2 single-view lists dashboard. List CRUD (add/rename/delete 
 
 ---
 
-### US-3.3 — Complete tasks
+### US-4.3: View ingredients in a recipe
 
 #### Scenario: User marks a todo as complete
 *   **Given** I am signed in
@@ -301,7 +279,7 @@ Extends the Feature 2 single-view lists dashboard. List CRUD (add/rename/delete 
 
 ---
 
-### US-3.4 — Edit and remove tasks
+### US-4.4: View steps in a recipe
 
 #### Scenario: User edits a todo title
 *   **Given** I am signed in
@@ -322,7 +300,7 @@ Extends the Feature 2 single-view lists dashboard. List CRUD (add/rename/delete 
 
 ---
 
-### US-3.5 — Private items only
+### US-4.5: Edit and remove ingredients
 
 #### Scenario: User cannot read todos in another user's list
 *   **Given** I am signed in as user A
@@ -366,7 +344,18 @@ Extends the Feature 2 single-view lists dashboard. List CRUD (add/rename/delete 
 
 ---
 
-### US-3.6 — Lists carry their items
+### US-4.6: Edit and remove steps
+
+#### Scenario: Deleting a list removes its todos
+*   **Given** I am signed in
+*   **And** I own list `Groceries` with todos `Buy milk` and `Buy eggs`
+*   **When** I delete list `Groceries` and confirm
+*   **Then** both todos are removed from the database
+*   **And** they no longer appear if the list ID were still queried
+
+---
+
+### US-4.7: recipes carry their steps
 
 #### Scenario: Deleting a list removes its todos
 *   **Given** I am signed in
@@ -379,65 +368,22 @@ Extends the Feature 2 single-view lists dashboard. List CRUD (add/rename/delete 
 
 ## Test Coverage Map
 
-| Story | Scenario | Test file | Test name |
-|-------|----------|-----------|-----------|
-| US-3.1 | User adds a todo to a list via dialog | `backend/tests/todos.test.js`, `frontend/tests/Dashboard.test.js` | `User adds a todo to a list via dialog` |
-| US-3.1 | User adds a todo with an empty title | `backend/tests/todos.test.js`, `frontend/tests/Dashboard.test.js` | `User adds a todo with an empty title` |
-| US-3.1 | Add item is only available inside the items dialog | `frontend/tests/Dashboard.test.js` | `Add item is only available inside the items dialog` |
-| US-3.2 | List items dialog shows empty state | `frontend/tests/Dashboard.test.js` | `List items dialog shows empty state` |
-| US-3.2 | User opens items for different lists | `frontend/tests/Dashboard.test.js` | `User opens items for different lists` |
-| US-3.2 | User only sees their own todos when opening items | `backend/tests/todos.test.js` | `User only sees their own todos when opening items` |
-| US-3.3 | User marks a todo as complete | `backend/tests/todos.test.js`, `frontend/tests/Dashboard.test.js` | `User marks a todo as complete` |
-| US-3.3 | User marks a completed todo as incomplete | `backend/tests/todos.test.js`, `frontend/tests/Dashboard.test.js` | `User marks a completed todo as incomplete` |
-| US-3.4 | User edits a todo title | `backend/tests/todos.test.js`, `frontend/tests/Dashboard.test.js` | `User edits a todo title` |
-| US-3.4 | User deletes a todo | `backend/tests/todos.test.js`, `frontend/tests/Dashboard.test.js` | `User deletes a todo` |
-| US-3.5 | User cannot read todos in another user's list | `backend/tests/todos.test.js` | `User cannot read todos in another user's list` |
-| US-3.5 | User attempts to add a todo to another user's list | `backend/tests/todos.test.js` | `User attempts to add a todo to another user's list` |
-| US-3.5 | User attempts to rename another user's todo | `backend/tests/todos.test.js` | `User attempts to rename another user's todo` |
-| US-3.5 | User attempts to delete another user's todo | `backend/tests/todos.test.js` | `User attempts to delete another user's todo` |
-| US-3.5 | Client cannot assign a todo to another user on create | `backend/tests/todos.test.js` | `Client cannot assign a todo to another user on create` |
-| US-3.5 | Unauthenticated API request for todos | `backend/tests/todos.test.js` | `Unauthenticated API request for todos` |
-| US-3.6 | Deleting a list removes its todos | `backend/tests/todos.test.js` | `Deleting a list removes its todos` |
+
 
 ---
 
 ## Agent implementation request
 
-Copy when asking Cursor to implement this feature (`@` this file):
 
-```text
-Implement Feature 3 from @features/feature-3-todo-list-item-management.md on branch `feature/3-todo-list-item-management`.
-
-Follow layer order in @features/framework.md (models → routes → backend tests → frontend → frontend tests).
-Map every Gherkin scenario in the Test Coverage Map; run `npm test` before finishing.
-If API routes, payloads, schema, or product rules changed per this spec, update @features/reference/api.md, @features/reference/data-model.md, and/or @features/reference/behavior.md in the same PR to match shipped code.
-Complete Definition of Done and the merge checklist in @features/framework.md.
-Do not implement behavior not in this spec.
-```
-
-**Reference updates for this feature:** `features/reference/data-model.md`, `features/reference/api.md`, `features/reference/behavior.md`
 
 ---
 
 ## Definition of Done
 
-*   [x] Backend and frontend implemented per this spec (**FR-00N** satisfied)
-*   [x] **Success Criteria (SC-00N)** met
-*   [x] All mapped tests pass (`npm test`)
-*   [x] Test Coverage Map complete
-*   [x] `features/reference/data-model.md` updated (if schema changed)
-*   [x] `features/reference/api.md` updated (if API changed)
-*   [x] `features/reference/behavior.md` updated (if product rules changed)
+
 
 ---
 
 ## Out of Scope
 
-*   New list CRUD features (owned by Feature 2)
-*   Drag-and-drop reordering of todos
-*   Due dates → [feature-5-todo-due-date.md](./feature-5-todo-due-date.md) (Feature 5)
-*   Priorities, labels, or notes on todos
-*   Sharing lists or todos with other users
-*   Search or filter across todos
-*   Bulk complete / bulk delete
-*   Archive completed todos
+
