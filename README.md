@@ -211,11 +211,13 @@ For this course, **you** write the requirements half and the **data model**. You
 ### 2.3 Feature catalog
 
 
-| ID  | File                                           | Branch                          | Depends on |
-| --- | ---------------------------------------------- | ------------------------------- | ---------- |
-| 1   | `features/feature-1-account-management.md`     | `feature-1-account-management`  | —          |
-| 4   | `features/feature-4-recipe-ingredient-management.md`     | `feature/4-recipe-ingredient-management`  | 1—2—3          | 
-| 6  | `features/feature-6-download-recipe-pdf`     | `feature-6-download-recipe-pdf`  | 1—2—3-4-5          | 
+| ID  | File                                                                                           | Branch                                  | Depends on    |
+| --- | ---------------------------------------------------------------------------------------------- | --------------------------------------- | ------------- |
+| 1   | [feature-1-account-management.md](features/feature-1-account-management.md)                     | `feature-1-account-management`          | —             |
+| 2   | [feature-2-ingredients-management.md](features/feature-2-ingredients-management.md)             | `feature/2-ingredients-management`      | Feature 1     |
+| 4   | [feature-4-recipe-ingredients-management.md](features/feature-4-recipe-ingredients-management.md) | `feature/4-recipe-ingredients-management` | Features 1–3 |
+| 6   | [feature-6-download-recipe-pdf](features/feature-6-download-recipe-pdf)                         | `feature-6-download-recipe-pdf`          | Features 1–5  | 
+
 
 
 New features: you own requirements + data model; Cursor helps with the remaining design sections. Still follow [features/framework.md](features/framework.md#feature-spec-template) for the overall shape of the file.

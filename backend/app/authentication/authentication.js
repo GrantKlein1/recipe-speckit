@@ -1,5 +1,5 @@
 const db = require("../models");
-const { hashPassword } = require("./crypto");
+const { hashPassword, decrypt } = require("./crypto");
 const Session = db.session;
 const User = db.user;
 
@@ -129,6 +129,10 @@ authenticateRoute = async (req, res, next) => {
       message: "Unauthorized! No Auth Header",
     });
   }
+
+  return res.status(401).send({
+    message: "Unauthorized! No Auth Header",
+  });
 };
 
 const auth = {
