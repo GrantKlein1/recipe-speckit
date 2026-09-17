@@ -1,11 +1,12 @@
-# Feature: Todo List Item Management
+# Feature: Recipe Ingredients and Steps Management
 
 **Feature ID:** 4
 **Branch pattern:** `feature/4-recipe-ingredients-management`
 **Status:** Ready
 **Created:** 2026-09-10
 **Input:** Signed-in users manage recipe ingredients and steps per recipe via dialogs opened from ingredient rows (ingredients, add, edit, delete)
-**Depends on:** [Feature 1 — Account Management](feature-1-account-management.md), [Feature 2 — Ingredient Management](feature-2-ingredient-management.md), [Feature 3 — Recipe Management](feature-3-recipe-management.md)
+**Depends on:** [Feature 1 — Account Management](feature-1-account-management.md), [Feature 2 — Ingredients Management](feature-2-ingredients-management.md), [Feature 3 — Recipe Management](feature-3-recipe-management.md)
+**Related:** `features/reference/api.md`, `features/reference/data-model.md`, `features/reference/behavior.md`
 
 ---
 
@@ -154,17 +155,18 @@
 
 ## Data Ownership & Isolation
 
----
+Each user owns their **recipes** (Feature 3). Recipe ingredients and recipe steps have **no `userId`**. Read and write scope always go through the parent recipe (`recipes.userId`).
 
 
+| Rule                  | Requirement                                                                                                                                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Read scope**        | List calls return only rows for the `recipeId` in the path (FR-011, FR-012). Nested catalog `ingredient` is included on recipe-ingredient lists.                                                            |
+| **Write scope**       | Create, update, and delete succeed only when the parent recipe exists and `recipe.userId = req.user.id` (FR-003, FR-004).                                                                                   |
+| **Create scope**      | New rows belong to that owned `recipeId`. Ignore any client-supplied `userId` (FR-005). If `recipeStepId` is omitted, store `null` (FR-008).                                                                |
+| **Cross-user access** | Another user’s recipe, or a recipe ingredient/step on it → `404` (not `403`). Create onto another user’s recipe: `{ "message": "Cannot find Recipe with id=<id>." }`                                        |
+| **UI scope**          | Add / edit / delete only on **Edit Recipe** for an owned recipe (FR-020). The recipes list MUST NOT show **Add Ingredient** or **Add Step** dialogs. The UI only renders lists returned for the open recipe. |
+| **Implementation**    | Writes use `authenticateRoute`. Parent-recipe check: load `Recipe` by id and compare `userId` to `req.user.id` (same pattern as `recipeIngredient.controller.js` create). Do not add `userId` columns. Do not invent `app/authorization/` — this app uses `app/authentication/`. |
 
-## API Requirements
-
----
-
-
-
-## Screen Requirements
 
 ---
 
@@ -177,6 +179,260 @@
 - **Recipe**: parent container for steps and recipe ingredients (Feature 3); deleting a recipe removes its steps and recipe ingredients.
 - **Ingredient**: shared catalog item with name, unit, and price (Feature 2); recipe ingredients reference it and MUST NOT delete it when a recipe line is removed.
 - **User**: account that owns recipes (Feature 1); ownership of steps and recipe ingredients is through the parent recipe.
+
+---
+
+
+
+## API Requirements
+
+Mount prefix: `/recipeapi` (see `backend/server.js`). Flat JSON; errors `{ "message": "…" }`. Do not wrap in `{ success, data }`. Create success is **`200`** (Gherkin and running `res.send`). Not found / not owned: `404` (do not use `403`). Unauthenticated writes: `401`.
+
+This feature’s contract is the nested recipe-ingredient and recipe-step routes the Edit Recipe screen and Gherkin use. Catalog ingredients stay [Feature 2](./feature-2-ingredients-management.md). Recipe row CRUD stays [Feature 3](./feature-3-recipe-management.md) except cascade-on-delete (FR-019).
+
+
+| Method   | Endpoint                                                     | Auth   | Purpose                                                                                          |
+| -------- | ------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------ |
+| `POST`   | `/recipeapi/recipes/:recipeId/recipeIngredients/`            | Bearer | Create a recipe ingredient (FR-006–FR-008)                                                       |
+| `GET`    | `/recipeapi/recipes/:recipeId/recipeIngredients/`            | No     | List that recipe’s ingredients with catalog `name`, `unit`, `pricePerUnit` (FR-011)              |
+| `PUT`    | `/recipeapi/recipes/:recipeId/recipeIngredients/:id`         | Bearer | Update `quantity`, `ingredientId`, and/or `recipeStepId` (FR-014, FR-018)                        |
+| `DELETE` | `/recipeapi/recipes/:recipeId/recipeIngredients/:id`         | Bearer | Remove the recipe line; do not delete the catalog ingredient (FR-015)                            |
+| `POST`   | `/recipeapi/recipes/:recipeId/recipeSteps/`                  | Bearer | Create a recipe step (FR-009, FR-010)                                                            |
+| `GET`    | `/recipeapi/recipes/:recipeId/recipeSteps/`                  | No     | List that recipe’s steps ordered by `stepNumber` ascending (FR-012)                              |
+| `GET`    | `/recipeapi/recipes/:recipeId/recipeStepsWithIngredients/`   | No     | Same list, including linked recipe ingredients (FR-013). Edit Recipe and recipe cards use this. |
+| `PUT`    | `/recipeapi/recipes/:recipeId/recipeSteps/:id`               | Bearer | Update `stepNumber` and `instruction` (FR-016)                                                   |
+| `DELETE` | `/recipeapi/recipes/:recipeId/recipeSteps/:id`               | Bearer | Delete the step (FR-017)                                                                         |
+
+
+List `GET`s are unauthenticated in the running app so recipe cards can show ingredients/steps to guests on published recipes. Writes still require a session (FR-001).
+
+The running frontend sends `recipeId` in the JSON body as well as the path; create handlers require it.
+
+Linking a step to existing recipe ingredients is **not** a field on `POST` step. After the step is created (or on update), the UI `PUT`s each selected recipe ingredient with `recipeStepId` set to that step (FR-018).
+
+### Create recipe ingredient — `POST /recipeapi/recipes/:recipeId/recipeIngredients/`
+
+**Request body:**
+
+```json
+{
+  "quantity": 2,
+  "ingredientId": 1,
+  "recipeId": 1,
+  "recipeStepId": null
+}
+```
+
+`recipeStepId` may be omitted; store `null`.
+
+**Success (`200`):**
+
+```json
+{
+  "id": 10,
+  "quantity": 2,
+  "ingredientId": 1,
+  "recipeId": 1,
+  "recipeStepId": null
+}
+```
+
+**Errors:**
+
+
+| Status | Condition                                      | `message`                                              |
+| ------ | ---------------------------------------------- | ------------------------------------------------------ |
+| `400`  | Missing `quantity`                             | `Quantity cannot be empty for recipe ingredient!`      |
+| `400`  | Missing `ingredientId`                         | `Ingredient ID cannot be empty for recipe ingredient!` |
+| `400` or `404` | `ingredientId` not in the catalog        | (no new catalog ingredient is created)                 |
+| `404`  | Parent recipe missing or not owned             | `Cannot find Recipe with id=<id>.`                     |
+| `401`  | Missing/invalid Bearer token                   |                                                        |
+
+
+A body `"userId": 999` is ignored; ownership stays on the parent recipe (FR-005).
+
+### List recipe ingredients — `GET /recipeapi/recipes/:recipeId/recipeIngredients/`
+
+**Success (`200`):** array of recipe-ingredient rows, each including nested catalog `ingredient`:
+
+```json
+[
+  {
+    "id": 10,
+    "quantity": 2,
+    "recipeId": 1,
+    "ingredientId": 1,
+    "recipeStepId": null,
+    "ingredient": {
+      "id": 1,
+      "name": "Flour",
+      "unit": "cup",
+      "pricePerUnit": "1.50"
+    }
+  }
+]
+```
+
+### Update recipe ingredient — `PUT /recipeapi/recipes/:recipeId/recipeIngredients/:id`
+
+**Request body (running Edit Recipe):** `quantity`, `ingredientId`, `recipeId`, `recipeStepId` as needed.
+
+**Success (`200`):** `{ "message": "RecipeIngredient was updated successfully." }`
+
+**Errors:** not owned / missing parent recipe → `404`. Unauthenticated → `401`.
+
+### Delete recipe ingredient — `DELETE /recipeapi/recipes/:recipeId/recipeIngredients/:id`
+
+**Success (`200`):** `{ "message": "RecipeIngredient was deleted successfully!" }`
+
+Catalog ingredient row MUST remain (FR-015). Not owned → `404`. Unauthenticated → `401`.
+
+### Create recipe step — `POST /recipeapi/recipes/:recipeId/recipeSteps/`
+
+**Request body:**
+
+```json
+{
+  "stepNumber": 1,
+  "instruction": "Mix the batter",
+  "recipeId": 1
+}
+```
+
+**Success (`200`):**
+
+```json
+{
+  "id": 20,
+  "stepNumber": 1,
+  "instruction": "Mix the batter",
+  "recipeId": 1
+}
+```
+
+**Errors:**
+
+
+| Status | Condition                                      | `message`                                          |
+| ------ | ---------------------------------------------- | -------------------------------------------------- |
+| `400`  | Missing `stepNumber`                           | `Step number cannot be empty for recipe step!`     |
+| `400`  | Missing `instruction`                          | `Description cannot be empty for recipe step!`     |
+| `400`  | `instruction` longer than 5000 characters      |                                                    |
+| `404`  | Parent recipe missing or not owned             |                                                    |
+| `401`  | Missing/invalid Bearer token                   |                                                    |
+
+
+### List recipe steps — `GET /recipeapi/recipes/:recipeId/recipeSteps/` and `…/recipeStepsWithIngredients/`
+
+Both return that recipe’s steps ordered by `stepNumber` **ASC** (FR-012). The `recipeStepsWithIngredients` variant nests linked lines under `recipeIngredient` (association alias in the running models), each with catalog `ingredient` (FR-013).
+
+**Success (`200`) example (`recipeStepsWithIngredients`):**
+
+```json
+[
+  {
+    "id": 20,
+    "stepNumber": 1,
+    "instruction": "Mix the batter",
+    "recipeId": 1,
+    "recipeIngredient": [
+      {
+        "id": 10,
+        "quantity": 2,
+        "ingredientId": 1,
+        "recipeStepId": 20,
+        "ingredient": {
+          "id": 1,
+          "name": "Flour",
+          "unit": "cup",
+          "pricePerUnit": "1.50"
+        }
+      }
+    ]
+  }
+]
+```
+
+### Update recipe step — `PUT /recipeapi/recipes/:recipeId/recipeSteps/:id`
+
+**Request body:** `stepNumber`, `instruction` (and `recipeId` as the running client sends).
+
+**Success (`200`):** `{ "message": "RecipeStep was updated successfully." }`
+
+Changing which recipe ingredients belong to the step is done with recipe-ingredient `PUT`s (`recipeStepId`), not a nested create payload (FR-016, FR-018).
+
+Not owned → `404`. Unauthenticated → `401`.
+
+### Delete recipe step — `DELETE /recipeapi/recipes/:recipeId/recipeSteps/:id`
+
+**Success (`200`):** `{ "message": "RecipeStep was deleted successfully!" }`
+
+Not owned → `404`. Unauthenticated → `401`.
+
+### Cascade (FR-019 / US-4.7)
+
+`DELETE /recipeapi/recipes/:id` is Feature 3. After a recipe is deleted, its `recipeSteps` and `recipeIngredients` MUST be gone; catalog `ingredients` remain. Associations: `onDelete: CASCADE` on the recipe parent.
+
+---
+
+
+
+## Screen Requirements
+
+Follow [ui-style-system.mdc](../.cursor/rules/ui-style-system.mdc) for theme tokens. Labels below match Gherkin and the running Edit Recipe UI (`frontend/src/views/EditRecipe.vue`).
+
+### [View: Edit Recipe] — route name `editRecipe` (`/recipe/:id`)
+
+Feature 1 requires a session; otherwise redirect to `login`. Recipe name / servings / time / description / **Update Recipe** / publish switch are Feature 3 (and Feature 5 for publish). This feature owns the **Ingredients** and **Steps** sections and their dialogs (FR-020).
+
+**Ingredients section**
+
+- Section title: **Ingredients**
+- Primary action: **Add** (opens the add-ingredient dialog)
+- Each line shows `{quantity} {unit}(s) of {name}` — e.g. **`2 cups of Flour`** — plus catalog price `($1.50/cup)` from FR-011
+- Row actions: pencil icon (edit), trash icon (delete). No confirm step on delete (Gherkin)
+- **Empty:** the section is visible; no catalog ingredient names appear
+- **Loading:** fetch `GET …/recipes/:id/recipeIngredients/` on mount (with the recipe and catalog ingredients)
+- **Error:** snackbar with the API `message`
+
+**Add Ingredient / Edit Ingredient dialog** (`v-dialog`)
+
+- Titles: **Add Ingredient** / **Edit Ingredient**
+- Fields: **Quantity** (number, required), **Ingredients** (select of Feature 2 catalog; `item-title` `name`, return object)
+- Confirm: **Add Ingredient** or **Update Ingredient**
+- Dismiss: **Close** — returns to Edit Recipe with no create/update request (Gherkin cancel)
+- Empty **Quantity** or no catalog selection → inline validation; no create API request
+- Add posts `quantity`, `ingredientId`, `recipeId`; `recipeStepId` omitted → `null`
+- Edit may change **Quantity** and the selected catalog ingredient (FR-014)
+
+**Steps section**
+
+- Section title: **Steps**
+- Primary action: **Add** (opens the add-step dialog)
+- Table rows: `stepNumber`, `instruction`, chips of linked catalog names (e.g. **Flour**), pencil, trash
+- Order is `stepNumber` ascending (FR-012)
+- **Empty:** the section is visible; no step instructions appear
+- **Loading:** fetch `GET …/recipes/:id/recipeStepsWithIngredients/` on mount
+- **Error:** snackbar with the API `message`
+
+**Add Step / Edit Step dialog** (`v-dialog`)
+
+- Titles: **Add Step** / **Edit Step**
+- Fields: **Number** (`stepNumber`, required), **Instruction** (required, max 5000), **Ingredients** (multi-select of **this recipe’s existing** recipe ingredients; may be empty — FR-018)
+- Confirm: **Add Step** or **Update Step**
+- Dismiss: **Close**
+- Empty **Instruction** (and missing required create fields) → inline validation; no create API request
+- After the step is saved, selected recipe ingredients are `PUT` with `recipeStepId` set to that step
+
+### [View: Recipe list] — route name `recipes` (`/recipes`)
+
+- No **Add Ingredient**, **Add Step**, or those dialogs on this view (FR-020)
+- Signed-in pencil on a card navigates to `editRecipe` (Feature 3 chrome)
+- Expanding a card may show read-only ingredients and steps via the list `GET`s (`RecipeCardComponent`); that is display only — no add/edit/delete of lines
+
+### App chrome
+
+- Unchanged in this feature (`MenuBar` from Features 1–2)
 
 ---
 
@@ -355,6 +611,17 @@ No `userId` on either table. Ownership is through the parent recipe (`recipes.us
 - **And** I click **Add Step**
 - **Then** `POST /recipeapi/recipes/:recipeId/recipeSteps/` returns `200` with `stepNumber` `1`, `instruction` `Mix the batter`, and `recipeId` matching `Pancakes`
 - **And** the Steps section shows `Mix the batter`
+
+#### Scenario: User cancels add a step to a recipe via dialog
+
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **When** I open Edit Recipe for `Pancakes`
+- **And** I click **Add** in the Steps section
+- **And** I enter number `1` and instruction `Mix the batter`
+- **And** I click **Cancel**
+- **Then** I return to the Recipe Edit page
+- **And** the Steps section does not show `Mix the batter`
 
 #### Scenario: User adds a step linked to existing recipe ingredients
 
@@ -620,11 +887,76 @@ No `userId` on either table. Ownership is through the parent recipe (`recipes.us
 
 ## Test Coverage Map
 
+Each scenario above must map to at least one automated test.
+
+
+| Story  | Scenario                                                                 | Test file                                  | Test name                                                                              |
+| ------ | ------------------------------------------------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| US-4.1 | User adds an ingredient to a recipe via dialog                           | `frontend/tests/EditRecipe.test.js`        | `it("User adds an ingredient to a recipe via dialog")`                                 |
+| US-4.1 | User cancels add an ingredient to a recipe                               | `frontend/tests/EditRecipe.test.js`        | `it("User cancels add an ingredient to a recipe")`                                     |
+| US-4.1 | User adds a recipe ingredient with an empty quantity                     | `frontend/tests/EditRecipe.test.js`        | `it("User adds a recipe ingredient with an empty quantity")`                           |
+| US-4.1 | User adds a recipe ingredient without selecting a catalog ingredient     | `frontend/tests/EditRecipe.test.js`        | `it("User adds a recipe ingredient without selecting a catalog ingredient")`           |
+| US-4.1 | Missing quantity on create is rejected by the API                        | `backend/tests/recipe-ingredients.test.js` | `it("Missing quantity on create is rejected by the API")`                              |
+| US-4.1 | Missing ingredientId on create is rejected by the API                    | `backend/tests/recipe-ingredients.test.js` | `it("Missing ingredientId on create is rejected by the API")`                          |
+| US-4.1 | Unknown catalog ingredientId is rejected                                 | `backend/tests/recipe-ingredients.test.js` | `it("Unknown catalog ingredientId is rejected")`                                       |
+| US-4.1 | Recipe ingredient is stored without a step when recipeStepId is omitted  | `backend/tests/recipe-ingredients.test.js` | `it("Recipe ingredient is stored without a step when recipeStepId is omitted")`        |
+| US-4.1 | Add ingredient is only available on Edit Recipe                          | `frontend/tests/RecipeList.test.js`        | `it("Add ingredient is only available on Edit Recipe")`                                |
+| US-4.1 | User cannot add an ingredient to another user's recipe                   | `backend/tests/recipe-ingredients.test.js` | `it("User cannot add an ingredient to another user's recipe")`                         |
+| US-4.1 | Client cannot assign a recipe ingredient to another user on create       | `backend/tests/recipe-ingredients.test.js` | `it("Client cannot assign a recipe ingredient to another user on create")`             |
+| US-4.1 | Unauthenticated create of a recipe ingredient returns 401                | `backend/tests/recipe-ingredients.test.js` | `it("Unauthenticated create of a recipe ingredient returns 401")`                      |
+| US-4.2 | User adds a step to a recipe via dialog                                  | `frontend/tests/EditRecipe.test.js`        | `it("User adds a step to a recipe via dialog")`                                        |
+| US-4.2 | User adds a step linked to existing recipe ingredients                   | `frontend/tests/EditRecipe.test.js`        | `it("User adds a step linked to existing recipe ingredients")`                         |
+| US-4.2 | User adds a recipe step with an empty instruction                        | `frontend/tests/EditRecipe.test.js`        | `it("User adds a recipe step with an empty instruction")`                              |
+| US-4.2 | Missing stepNumber or instruction on create is rejected by the API       | `backend/tests/recipe-steps.test.js`       | `it("Missing stepNumber or instruction on create is rejected by the API")`             |
+| US-4.2 | Instruction longer than 5000 characters is rejected                      | `backend/tests/recipe-steps.test.js`       | `it("Instruction longer than 5000 characters is rejected")`                            |
+| US-4.2 | Add step is only available on Edit Recipe                                | `frontend/tests/RecipeList.test.js`        | `it("Add step is only available on Edit Recipe")`                                      |
+| US-4.2 | User cannot add a step to another user's recipe                          | `backend/tests/recipe-steps.test.js`       | `it("User cannot add a step to another user's recipe")`                                |
+| US-4.2 | Unauthenticated create of a recipe step returns 401                      | `backend/tests/recipe-steps.test.js`       | `it("Unauthenticated create of a recipe step returns 401")`                            |
+| US-4.3 | Ingredients section shows an empty recipe                                | `frontend/tests/EditRecipe.test.js`        | `it("Ingredients section shows an empty recipe")`                                      |
+| US-4.3 | User opens ingredients for different recipes                             | `frontend/tests/EditRecipe.test.js`        | `it("User opens ingredients for different recipes")`                                   |
+| US-4.3 | Ingredient listing includes catalog name, unit, and price                | `frontend/tests/EditRecipe.test.js`        | `it("Ingredient listing includes catalog name, unit, and price")`                      |
+| US-4.3 | User only sees their own recipe ingredients                              | `frontend/tests/EditRecipe.test.js`        | `it("User only sees their own recipe ingredients")`                                    |
+| US-4.4 | Steps section shows an empty recipe                                      | `frontend/tests/EditRecipe.test.js`        | `it("Steps section shows an empty recipe")`                                            |
+| US-4.4 | User opens steps for different recipes                                   | `frontend/tests/EditRecipe.test.js`        | `it("User opens steps for different recipes")`                                         |
+| US-4.4 | Recipe steps are listed by step number ascending                         | `frontend/tests/EditRecipe.test.js`        | `it("Recipe steps are listed by step number ascending")`                               |
+| US-4.4 | Step listing includes linked recipe ingredients                          | `frontend/tests/EditRecipe.test.js`        | `it("Step listing includes linked recipe ingredients")`                                |
+| US-4.5 | User edits a recipe ingredient quantity                                  | `frontend/tests/EditRecipe.test.js`        | `it("User edits a recipe ingredient quantity")`                                        |
+| US-4.5 | User changes a recipe ingredient's catalog ingredient                    | `frontend/tests/EditRecipe.test.js`        | `it("User changes a recipe ingredient's catalog ingredient")`                          |
+| US-4.5 | User deletes a recipe ingredient                                         | `frontend/tests/EditRecipe.test.js`        | `it("User deletes a recipe ingredient")`                                               |
+| US-4.5 | Catalog ingredient remains after deleting a recipe line                  | `backend/tests/recipe-ingredients.test.js` | `it("Catalog ingredient remains after deleting a recipe line")`                        |
+| US-4.5 | User cannot update another user's recipe ingredient                      | `backend/tests/recipe-ingredients.test.js` | `it("User cannot update another user's recipe ingredient")`                            |
+| US-4.5 | User cannot delete another user's recipe ingredient                      | `backend/tests/recipe-ingredients.test.js` | `it("User cannot delete another user's recipe ingredient")`                            |
+| US-4.5 | Unauthenticated update or delete of a recipe ingredient returns 401      | `backend/tests/recipe-ingredients.test.js` | `it("Unauthenticated update or delete of a recipe ingredient returns 401")`            |
+| US-4.6 | User edits a recipe step                                                 | `frontend/tests/EditRecipe.test.js`        | `it("User edits a recipe step")`                                                       |
+| US-4.6 | User updates which ingredients are linked to a step                      | `frontend/tests/EditRecipe.test.js`        | `it("User updates which ingredients are linked to a step")`                            |
+| US-4.6 | User deletes a recipe step                                               | `frontend/tests/EditRecipe.test.js`        | `it("User deletes a recipe step")`                                                     |
+| US-4.6 | User cannot update another user's recipe step                            | `backend/tests/recipe-steps.test.js`       | `it("User cannot update another user's recipe step")`                                  |
+| US-4.6 | User cannot delete another user's recipe step                            | `backend/tests/recipe-steps.test.js`       | `it("User cannot delete another user's recipe step")`                                  |
+| US-4.6 | Unauthenticated update or delete of a recipe step returns 401            | `backend/tests/recipe-steps.test.js`       | `it("Unauthenticated update or delete of a recipe step returns 401")`                  |
+| US-4.7 | Deleting a recipe removes its steps and recipe ingredients               | `backend/tests/recipe-ingredients.test.js` | `it("Deleting a recipe removes its steps and recipe ingredients")`                     |
+
+
+Create/update HTTP `200` bodies for dialog scenarios are asserted from the matching `it` in `EditRecipe.test.js`; ownership and `400`/`401`/`404` contracts belong in the backend files above (those files are the intended Jest paths — add them when implementing).
+
 ---
 
 
 
 ## Agent implementation request
+
+Copy when asking Cursor to implement this feature (`@` this file):
+
+```text
+Implement Feature 4 from @features/feature-4-recipe-ingredients-management.md on branch `feature/4-recipe-ingredients-management`.
+
+Follow layer order in @features/framework.md (models → routes → backend tests → frontend → frontend tests).
+Map every Gherkin scenario in the Test Coverage Map; run `npm test` before finishing.
+If API routes, payloads, schema, or product rules changed per this spec, update @features/reference/api.md, @features/reference/data-model.md, and/or @features/reference/behavior.md in the same PR to match shipped code.
+Complete Definition of Done and the merge checklist in @features/framework.md.
+Do not implement behavior not in this spec.
+```
+
+**Reference updates for this feature:** `features/reference/api.md`, `features/reference/data-model.md`, `features/reference/behavior.md`
 
 ---
 
@@ -632,9 +964,23 @@ No `userId` on either table. Ownership is through the parent recipe (`recipes.us
 
 ## Definition of Done
 
+*   [ ] Backend and frontend implemented per this spec (**FR-001**–**FR-020** satisfied)
+*   [ ] **Success Criteria (SC-001**–**SC-004)** met
+*   [ ] All mapped tests pass (`npm test`)
+*   [ ] Test Coverage Map complete
+*   [ ] `features/reference/data-model.md` updated (if schema changed)
+*   [ ] `features/reference/api.md` updated (if API changed)
+*   [ ] `features/reference/behavior.md` updated (if product rules changed)
+
 ---
 
 
 
 ## Out of Scope
+
+*   Catalog ingredient create/edit/delete ([Feature 2](./feature-2-ingredients-management.md)) — this flow only **selects** existing catalog rows (FR-007)
+*   Recipe create / edit / delete UI and `DELETE /recipeapi/recipes/:id` contract except cascade of child rows ([Feature 3](./feature-3-recipe-management.md))
+*   Published-recipe management and guest discovery beyond read-only card lists ([Feature 5](./feature-5-published-recipe-management.md))
+*   Drag-and-drop reorder, search, and sharing
+*   Unscoped leftover routes that are not in this feature’s Gherkin: `GET /recipeapi/recipeIngredients/`, `GET /recipeapi/recipeSteps/`, `DELETE /recipeapi/recipeIngredients/`, `DELETE /recipeapi/recipeSteps/`
 
