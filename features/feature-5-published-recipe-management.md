@@ -109,7 +109,7 @@
 - Missing `isPublished` on create → `400` with a clear message (e.g. `"Is Published cannot be empty for recipe!"`).
 - Unauthenticated `PUT` / `POST` for recipes → `401`.
 - Unowned recipe id on publish update → `404`.
-- Zero published recipes → empty list UI with quoted empty-state copy (see Screen Requirements).
+- Zero published recipes → blank list area under the **Recipes** heading (no empty-state message).
 - Owner unpublishes while a guest had the list open → next fetch omits that recipe.
 
 
@@ -216,7 +216,7 @@ Recipes remain owned by one user. Publishing grants **read** visibility to every
 - Loads `GET /recipeapi/recipes` (published only).
 - Renders each published recipe with `RecipeCard` (name, servings chip, time chip, description; expand for ingredients/steps).
 - **Must not** show **Add**, edit pencil, or PDF actions.
-- **Empty state:** **"No published recipes yet."** when the public list is empty.
+- **Empty state:** blank — when the public list is empty, show only the **Recipes** heading (no empty-state message or placeholder copy).
 - **Loading state:** progress/skeleton while fetching.
 - **Error state:** snackbar or `<v-alert type="error">` for API failures.
 
@@ -352,7 +352,9 @@ Other recipe columns (`id`, `name`, `description`, `servings`, `time`, `userId`,
 - **Given** I am on the login page with no session
 - **And** there are no published recipes
 - **When** I click **View Published Recipes**
-- **Then** I see **"No published recipes yet."**
+- **Then** I see the **Recipes** heading
+- **And** no recipe cards are shown
+- **And** no empty-state message is displayed
 
 ---
 

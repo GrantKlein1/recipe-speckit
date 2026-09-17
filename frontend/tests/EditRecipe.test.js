@@ -1,0 +1,187 @@
+/**
+ * Feature 5 — Published Recipe Management
+ * Spec: features/feature-5-published-recipe-management.md
+ */
+
+import { mount, flushPromises } from "@vue/test-utils";
+import { createVuetify } from "vuetify";
+import * as components from "vuetify/components";
+import * as directives from "vuetify/directives";
+import { createRouter, createMemoryHistory } from "vue-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import EditRecipe from "../src/views/EditRecipe.vue";
+
+const {
+  getRecipeMock,
+  updateRecipeMock,
+  getIngredientsMock,
+  getRecipeIngredientsMock,
+  getRecipeStepsMock,
+} = vi.hoisted(() => ({
+  getRecipeMock: vi.fn(),
+  updateRecipeMock: vi.fn(),
+  getIngredientsMock: vi.fn(),
+  getRecipeIngredientsMock: vi.fn(),
+  getRecipeStepsMock: vi.fn(),
+}));
+
+vi.mock("../src/services/RecipeServices", () => ({
+  default: {
+    getRecipe: (...args) => getRecipeMock(...args),
+    updateRecipe: (...args) => updateRecipeMock(...args),
+    getRecipes: vi.fn(),
+    getRecipesByUserId: vi.fn(),
+    addRecipe: vi.fn(),
+    deleteRecipe: vi.fn(),
+  },
+}));
+
+vi.mock("../src/services/IngredientServices", () => ({
+  default: {
+    getIngredients: (...args) => getIngredientsMock(...args),
+  },
+}));
+
+vi.mock("../src/services/RecipeIngredientServices", () => ({
+  default: {
+    getRecipeIngredientsForRecipe: (...args) =>
+      getRecipeIngredientsMock(...args),
+  },
+}));
+
+vi.mock("../src/services/RecipeStepServices", () => ({
+  default: {
+    getRecipeStepsForRecipe: (...args) => getRecipeStepsMock(...args),
+    getRecipeStepsForRecipeWithIngredients: (...args) =>
+      getRecipeStepsMock(...args),
+  },
+}));
+
+function makeVuetify() {
+  return createVuetify({ components, directives });
+}
+
+async function mountEditRecipe(recipeId = "1") {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      {
+        path: "/recipe/:id",
+        name: "editRecipe",
+        component: EditRecipe,
+        props: true,
+      },
+    ],
+  });
+  await router.push(`/recipe/${recipeId}`);
+  await router.isReady();
+
+  const wrapper = mount(EditRecipe, {
+    global: {
+      plugins: [makeVuetify(), router],
+    },
+  });
+  await flushPromises();
+  return wrapper;
+}
+
+function fieldByLabel(wrapper, label) {
+  return wrapper
+    .findAllComponents({ name: "VTextField" })
+    .find((c) => c.props("label") === label);
+}
+
+describe("Feature 5 — Published Recipe Management", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    getRecipeMock.mockReset();
+    updateRecipeMock.mockReset();
+    getIngredientsMock.mockReset();
+    getRecipeIngredientsMock.mockReset();
+    getRecipeStepsMock.mockReset();
+    getIngredientsMock.mockResolvedValue({ data: [] });
+    getRecipeIngredientsMock.mockResolvedValue({ data: [] });
+    getRecipeStepsMock.mockResolvedValue({ data: [] });
+    updateRecipeMock.mockResolvedValue({
+      data: { message: "Recipe was updated successfully." },
+    });
+  });
+
+  describe("US-5.1 — Publish or unpublish from edit recipe", () => {
+    it("Owner publishes a recipe", async () => {
+      getRecipeMock.mockResolvedValue({
+        data: [
+          {
+            id: 1,
+            name: "Pasta Primavera",
+            description: "Spring vegetables over pasta",
+            servings: 4,
+            time: 30,
+            isPublished: false,
+            userId: 10,
+          },
+        ],
+      });
+
+      const wrapper = await mountEditRecipe("1");
+      expect(getRecipeMock).toHaveBeenCalled();
+      expect(fieldByLabel(wrapper, "Name").props("modelValue")).toBe(
+        "Pasta Primavera"
+      );
+
+      const publishSwitch = wrapper.findComponent({ name: "VSwitch" });
+      expect(publishSwitch.exists()).toBe(true);
+      expect(publishSwitch.props("modelValue")).toBe(false);
+      await publishSwitch.setValue(true);
+      await flushPromises();
+
+      const updateBtn = wrapper
+        .findAllComponents({ name: "VBtn" })
+        .find((b) => b.text().includes("Update Recipe"));
+      expect(updateBtn).toBeTruthy();
+      await updateBtn.trigger("click");
+      await flushPromises();
+
+      expect(updateRecipeMock).toHaveBeenCalled();
+      const [, payload] = updateRecipeMock.mock.calls[0];
+      expect(payload.isPublished).toBe(true);
+      expect(payload.name).toBe("Pasta Primavera");
+    });
+
+    it("Owner unpublishes a recipe", async () => {
+      getRecipeMock.mockResolvedValue({
+        data: [
+          {
+            id: 1,
+            name: "Pasta Primavera",
+            description: "Spring vegetables over pasta",
+            servings: 4,
+            time: 30,
+            isPublished: true,
+            userId: 10,
+          },
+        ],
+      });
+
+      const wrapper = await mountEditRecipe("1");
+      expect(fieldByLabel(wrapper, "Name").props("modelValue")).toBe(
+        "Pasta Primavera"
+      );
+
+      const publishSwitch = wrapper.findComponent({ name: "VSwitch" });
+      expect(publishSwitch.props("modelValue")).toBe(true);
+      await publishSwitch.setValue(false);
+      await flushPromises();
+
+      const updateBtn = wrapper
+        .findAllComponents({ name: "VBtn" })
+        .find((b) => b.text().includes("Update Recipe"));
+      await updateBtn.trigger("click");
+      await flushPromises();
+
+      expect(updateRecipeMock).toHaveBeenCalled();
+      const [, payload] = updateRecipeMock.mock.calls[0];
+      expect(payload.isPublished).toBe(false);
+    });
+  });
+});
