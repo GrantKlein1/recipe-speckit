@@ -211,9 +211,10 @@ For this course, **you** write the requirements half and the **data model**. You
 ### 2.3 Feature catalog
 
 
-| ID  | File                                           | Branch                          | Depends on |
-| --- | ---------------------------------------------- | ------------------------------- | ---------- |
-| 1   | `features/feature-1-account-management.md`     | `feature-1-account-management`  | —          |
+| ID  | File                                           | Branch                             | Depends on |
+| --- | ---------------------------------------------- | ---------------------------------- | ---------- |
+| 1   | `features/feature-1-account-management.md`     | `feature-1-account-management`     | —          |
+| 2   | [feature-2-ingredients-management.md](features/feature-2-ingredients-management.md) | `feature/2-ingredients-management` | Feature 1  |
 
 
 | 4   | `features/feature-4-recipe-ingredient-management.md`     | `feature/4-recipe-ingredient-management`  | 1—2—3          |
