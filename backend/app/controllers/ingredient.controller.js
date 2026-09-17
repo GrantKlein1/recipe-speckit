@@ -6,17 +6,17 @@ const Op = db.Sequelize.Op;
 exports.create = (req, res) => {
   // Validate request
   if (req.body.name === undefined) {
-    const error = new Error("Name cannot be empty for ingredient!");
-    error.statusCode = 400;
-    throw error;
+    return res.status(400).send({
+      message: "Name cannot be empty for ingredient!",
+    });
   } else if (req.body.unit === undefined) {
-    const error = new Error("Unit cannot be empty for ingredient!");
-    error.statusCode = 400;
-    throw error;
+    return res.status(400).send({
+      message: "Unit cannot be empty for ingredient!",
+    });
   } else if (req.body.pricePerUnit === undefined) {
-    const error = new Error("Price per unit cannot be empty for ingredient!");
-    error.statusCode = 400;
-    throw error;
+    return res.status(400).send({
+      message: "Price per unit cannot be empty for ingredient!",
+    });
   }
 
   // Create a Ingredient
