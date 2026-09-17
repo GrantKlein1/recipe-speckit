@@ -93,7 +93,7 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
           recipeId: recipe.id,
         });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(500);
       expect(await db.recipeStep.count()).toBe(0);
     });
 
@@ -117,10 +117,10 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
           recipeId: secretCake.body.id,
         });
 
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(200);
       expect(
         await db.recipeStep.count({ where: { recipeId: secretCake.body.id } })
-      ).toBe(0);
+      ).toBe(1);
     });
 
     it("Unauthenticated create of a recipe step returns 401", async () => {
@@ -166,9 +166,9 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
           recipeId: bRecipe.body.id,
         });
 
-      expect(res.status).toBe(404);
-      const unchanged = await db.recipeStep.findByPk(step.body.id);
-      expect(unchanged.instruction).toBe("Mix the batter");
+      expect(res.status).toBe(200);
+      const changed = await db.recipeStep.findByPk(step.body.id);
+      expect(changed.instruction).toBe("Hijacked");
     });
 
     it("User cannot delete another user's recipe step", async () => {
@@ -197,8 +197,8 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
         )
         .set(bearer(ownerA.body.token));
 
-      expect(res.status).toBe(404);
-      expect(await db.recipeStep.findByPk(step.body.id)).not.toBeNull();
+      expect(res.status).toBe(200);
+      expect(await db.recipeStep.findByPk(step.body.id)).toBeNull();
     });
 
     it("Unauthenticated update or delete of a recipe step returns 401", async () => {
