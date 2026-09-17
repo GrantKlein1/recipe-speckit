@@ -217,7 +217,7 @@ For this course, **you** write the requirements half and the **data model**. You
 | 2   | [feature-2-ingredients-management.md](features/feature-2-ingredients-management.md) | `feature/2-ingredients-management` | Feature 1  |
 
 
-| 4   | `features/feature-4-recipe-ingredient-management.md`     | `feature/4-recipe-ingredient-management`  | 1—2—3          |
+| 4   | [features/feature-4-recipe-ingredient-management](features/feature-4-recipe-ingredients-management.md) | `feature/4-recipe-ingredient-management`  | 1—2—3 |
 
 
 New features: you own requirements + data model; Cursor helps with the remaining design sections. Still follow [features/framework.md](features/framework.md#feature-spec-template) for the overall shape of the file.
