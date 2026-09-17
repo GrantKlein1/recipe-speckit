@@ -56,7 +56,7 @@ async function getIngredients() {
 
 async function addIngredient() {
   isAdd.value = false;
-  delete newIngredient.id;
+  delete newIngredient.value.id;
   await IngredientServices.addIngredient(newIngredient.value)
     .then(() => {
       snackbar.value.value = true;
@@ -67,7 +67,7 @@ async function addIngredient() {
       console.log(error);
       snackbar.value.value = true;
       snackbar.value.color = "error";
-      snackbar.value.text = error.response.data.message;
+      snackbar.value.text = error.response?.data?.message || "Failed to add ingredient.";
     });
   await getIngredients();
 }
@@ -78,13 +78,13 @@ async function updateIngredient() {
     .then(() => {
       snackbar.value.value = true;
       snackbar.value.color = "green";
-      snackbar.value.text = `${newIngredient.name} updated successfully!`;
+      snackbar.value.text = `${newIngredient.value.name} updated successfully!`;
     })
     .catch((error) => {
       console.log(error);
       snackbar.value.value = true;
       snackbar.value.color = "error";
-      snackbar.value.text = error.response.data.message;
+      snackbar.value.text = error.response?.data?.message || "Failed to update ingredient.";
     });
   await getIngredients();
 }
