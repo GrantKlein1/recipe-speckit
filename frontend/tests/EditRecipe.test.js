@@ -3,7 +3,7 @@
  * Spec: features/feature-5-published-recipe-management.md
  */
 
-import { mount, flushPromises } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { createVuetify } from "vuetify";
 import * as components from "vuetify/components";
 import * as directives from "vuetify/directives";
@@ -33,6 +33,21 @@ vi.mock("../src/services/RecipeServices", () => ({
     getRecipesByUserId: vi.fn(),
     addRecipe: vi.fn(),
     deleteRecipe: vi.fn(),
+  },
+  IngredientServices: {
+    getIngredients: vi.fn(),
+  },
+  RecipeIngredientServices: {
+    getRecipeIngredientsForRecipe: vi.fn(),
+    addRecipeIngredient: vi.fn(),
+    updateRecipeIngredient: vi.fn(),
+    deleteRecipeIngredient: vi.fn(),
+  },
+  RecipeStepServices: {
+    getRecipeStepsForRecipeWithIngredients: vi.fn(),
+    addRecipeStep: vi.fn(),
+    updateRecipeStep: vi.fn(),
+    deleteRecipeStep: vi.fn(),
   },
 }));
 
@@ -134,6 +149,8 @@ describe("Feature 5 — Published Recipe Management", () => {
       expect(publishSwitch.props("modelValue")).toBe(false);
       await publishSwitch.setValue(true);
       await flushPromises();
+      expect(wrapper.text()).toContain("Whisk the eggs");
+      expect(wrapper.text()).not.toContain("Mix the batter");
 
       const updateBtn = wrapper
         .findAllComponents({ name: "VBtn" })
@@ -141,6 +158,32 @@ describe("Feature 5 — Published Recipe Management", () => {
       expect(updateBtn).toBeTruthy();
       await updateBtn.trigger("click");
       await flushPromises();
+      expect(wrapper.text()).toContain("Mix the batter");
+      expect(wrapper.text()).not.toContain("Whisk the eggs");
+    });
+
+    it("Recipe steps are listed by step number ascending", async () => {
+      RecipeStepServices.getRecipeStepsForRecipeWithIngredients.mockResolvedValue(
+        {
+          data: [
+            mixStep({ id: 20, stepNumber: 1, instruction: "Mix the batter" }),
+            mixStep({ id: 21, stepNumber: 2, instruction: "Heat the pan" }),
+            mixStep({ id: 22, stepNumber: 3, instruction: "Plate it" }),
+          ],
+        }
+      );
+
+      wrapper = mountView();
+      await flushPromises();
+
+      const rows = wrapper.findAll("tbody tr").map((row) => row.text());
+      expect(rows[0]).toContain("1");
+      expect(rows[0]).toContain("Mix the batter");
+      expect(rows[1]).toContain("2");
+      expect(rows[1]).toContain("Heat the pan");
+      expect(rows[2]).toContain("3");
+      expect(rows[2]).toContain("Plate it");
+    });
 
       expect(updateRecipeMock).toHaveBeenCalled();
       const [, payload] = updateRecipeMock.mock.calls[0];

@@ -217,6 +217,9 @@ For this course, **you** write the requirements half and the **data model**. You
 | 5   | `feature-5-published-recipe-management.md`              | `features/feature-5-published-recipe-management.md` | `feature-1-3-4` |
 
 
+| 4   | [features/feature-4-recipe-ingredient-management](features/feature-4-recipe-ingredients-management.md) | `feature/4-recipe-ingredient-management`  | Feature 1—3 |
+
+
 New features: you own requirements + data model; Cursor helps with the remaining design sections. Still follow [features/framework.md](features/framework.md#feature-spec-template) for the overall shape of the file.
 
 Stay on `feature/N-short-name` and continue to §3 to add tests. Commit and publish after the tests are in place (§3 step 7).

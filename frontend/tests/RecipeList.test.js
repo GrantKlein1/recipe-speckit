@@ -3,7 +3,7 @@
  * Spec: features/feature-5-published-recipe-management.md
  */
 
-import { mount, flushPromises } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { createVuetify } from "vuetify";
 import * as components from "vuetify/components";
 import * as directives from "vuetify/directives";
