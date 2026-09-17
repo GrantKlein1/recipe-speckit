@@ -211,14 +211,16 @@ For this course, **you** write the requirements half and the **data model**. You
 ### 2.3 Feature catalog
 
 
-| ID  | File                                                    | Branch                                              | Depends on      |
-| --- | ------------------------------------------------------- | --------------------------------------------------- | --------------- |
-| —   | *Add* `feature-1-….md` *after you write the first spec* | `feature/1-…`                                       | —               |
-| 5   | `feature-5-published-recipe-management.md`              | `features/feature-5-published-recipe-management.md` | `feature-1-3-4` |
 
 
-| 4   | [features/feature-4-recipe-ingredient-management](features/feature-4-recipe-ingredients-management.md) | `feature/4-recipe-ingredient-management`  | Feature 1—3 |
-
+| ID  | File                                                                                           | Branch                                  | Depends on    |
+| --- | ---------------------------------------------------------------------------------------------- | --------------------------------------- | ------------- |
+| 1   | [feature-1-account-management.md](features/feature-1-account-management.md)                     | `feature-1-account-management`          | —             |
+| 2   | [feature-2-ingredients-management.md](features/feature-2-ingredients-management.md)             | `feature/2-ingredients-management`      | Feature 1     |
+| 3   | [feature-3-recipe-management.md](features/feature-3-recipe-management.md) | `feature-3-recipe-management` | Feature 1-2  |
+| 4   | [feature-4-recipe-ingredients-management.md](features/feature-4-recipe-ingredients-management.md) | `feature/4-recipe-ingredients-management` | Features 1–3 |
+| 5   | [feature-5-published-recipe-management.md](features/feature-5-published-recipe-management.md) | `feature-5-published-recipe-management` | Features 1–4 |
+| 6   | [feature-6-download-recipe-pdf](features/feature-6-download-recipe-pdf)                         | `feature-6-download-recipe-pdf`          | Features 1–5  | 
 
 New features: you own requirements + data model; Cursor helps with the remaining design sections. Still follow [features/framework.md](features/framework.md#feature-spec-template) for the overall shape of the file.
 

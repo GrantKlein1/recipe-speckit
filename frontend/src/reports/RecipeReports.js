@@ -52,7 +52,7 @@ async generateRecipePDF(recipe) {
 
  
 
-  img.src = "/oc-logo-white.png";
+  img.src = "/oc_logo.png";
   doc.addImage(img, "PNG", 0.4, 0.78, 0.975, 0.56);
 
   let asof = "published as of " + new Date(Date.now()).toLocaleDateString();

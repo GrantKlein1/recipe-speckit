@@ -5,5 +5,6 @@
 | [3 — Recipe Management](./feature-3-recipe-management.md) | User can create/delete/edit/download recipes which contain ingredients and recipe steps. |
 | [4 — Recipe Steps and Ingredients Management](./feature-4-recipe-ingredients-management.md) | Users can add/delete/edit ingredients and steps to an existing recipe. |
 | [5 — Published Recipe Management](./feature-5-published-recipe-management.md) | Users can publish their recipe via a toggle in the edit recipe menu. Published recipes are visible to all users at the login screen via a button. |
+| [6 — Download Recipe PDF](./feature-6-published-recipe-management.md) | Users can download their recipes to their local machine as a PDF. |
 
 

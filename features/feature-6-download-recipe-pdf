@@ -1,0 +1,325 @@
+# Feature: Download Recipe as a PDF
+
+**Feature ID:** 6
+**Branch pattern:** `feature-6-download-recipe-pdf`
+**Status:** Ready
+**Created:** 2026-17-09
+**Input:** Signed in user can download their recipes into a viewable PDF from the recipe menu 
+**Related:** `features/reference/api.md`, `features/reference/data-model.md`, `features/reference/behavior.md`
+**Depends on** `feature-1-account-management`, `feature-2-ingredients-management`, `feature-3-recipe-management`, `feature/4-recipe-ingredient-management`, `feature-5-published-recipe-mangement`
+
+
+---
+
+## User Stories
+
+
+### US-6.1: Download a recipe as a PDF
+
+**As a** signed-in user with an existing recipe
+**I want to** download my recipe as a PDF
+**So that** I can view my recipe as a PDF on my local machine
+
+**Priority:** P1
+**Independent test:** Click download, have the file menu pop up, choose a file name, choose a location, click save and PDF exists in local file explorer
+**Acceptance scenarios:** see ### US-6.1 under Acceptance Criteria
+
+
+### US-6.2: Open a downloaded recipe PDF
+
+**As a** user with a downloaded recipe
+**I want to** open my recipe PDF
+**So that** I can view my recipe steps, ingredients in an organized view
+
+**Priority:** P2
+**Independent test:** Open the file explorer, open the recipe PDF and view the recipe's steps and ingredients
+**Acceptance scenarios:** see ### US-6.2 under Acceptance Criteria
+
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: Users MUST have at least one recipe to be able to download it.
+- **FR-002**: User MUST be signed in a valid session to click download.
+- **FR-003**: Downloading a recipe MUST open up the users file explorer to select location and file name.
+- **FR-004**: A downloaded recipe MUST have the `oc_logo.png` in the upper left hand corner of the PDF.
+- **FR-005**: The generated PDF MUST include the recipe **name**, an **Ingredients** list (quantity, unit, and name), and a **Steps** table (step number, instruction, and ingredients used on that step) so the file is readable after save.
+- **FR-006**: The download control MUST be the PDF icon (`mdi-file-pdf-box`) on the recipe card on the recipes page (`recipes` / `/recipes`). It MUST be shown only when `user` is in `localStorage`. Clicking it MUST generate the PDF for that recipe and MUST NOT navigate away from the recipes page.
+- **FR-007**: PDF generation MUST use that recipe’s stored ingredients and steps (Feature 4 services). The app MUST NOT persist PDF files on the server and MUST NOT invent a PDF download API in this feature.
+
+
+
+## Assumptions
+
+- Recipe create/edit/delete is Feature 3. Recipe steps and recipe-ingredient rows are Feature 4. This feature only exports an existing recipe to a PDF.
+- Session, `localStorage` key `user`, and route guards are Feature 1. Download requires a signed-in user with a valid session.
+- The PDF is generated in the browser from the recipe already shown on the recipes page. The save dialog MAY start with a default file name; the user still chooses the final name and location (**FR-003**).
+- The logo asset is `oc_logo.png` (same brand mark as the MenuBar).
+- Guests who view published recipes (Feature 1 / Feature 5) cannot download a PDF.
+- Ingredient CRUD, recipe CRUD, step/ingredient editing, and the publish toggle stay Features 2–5.
+
+
+
+## Edge Cases
+
+- No recipes for the signed-in user → there is no recipe card, so download is not available.
+- Guest or signed-out user on the recipes page → the PDF download control is hidden.
+- Recipe with no ingredients and/or no steps → PDF still downloads; those sections are empty rather than blocking save.
+- User cancels the save / file dialog → no file is written; the recipe is unchanged.
+- Missing or expired session → the PDF icon is hidden (**FR-002**, **FR-006**). Feature 4 list `GET`s used to fill the PDF do not require a token in the running app; this feature does not add a PDF endpoint that returns `401`.
+
+
+
+## Success Criteria
+
+- **SC-001**: Every Gherkin scenario in this feature has at least one automated test before merge.
+- **SC-002**: A signed-in user with an existing recipe can click download, choose a name and location, and find the PDF in their file explorer in one manual pass.
+- **SC-003**: `npm test` passes with coverage for the PDF download control and generated content mapped to US-6.1 and US-6.2.
+- **SC-004**: Opening the saved PDF shows the recipe name, ingredients, and steps in an organized layout, with `oc_logo.png` in the upper left.
+
+---
+
+
+
+## Data Ownership & Isolation
+
+Each account owns its own recipes (Feature 3). This feature does not create a PDF table or a download API. It only lets a signed-in user export a recipe already on their recipes list to a file on their machine.
+
+
+| Rule                  | Requirement                                                                                                                                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Read scope**        | PDF generation reads that recipe’s ingredients and steps via Feature 4 list `GET`s for the recipe id on the card. Recipe name comes from the recipe already loaded on the signed-in recipes list.           |
+| **Write scope**       | No server write. Saving the PDF writes a local file only. Recipe, ingredient, and step rows are unchanged.                                                                                                  |
+| **Create scope**      | No new database rows. The PDF is not stored on the server (**FR-007**).                                                                                                                                     |
+| **Cross-user access** | There is no PDF-by-id API to call for another user’s recipe. The download control appears only on the signed-in user’s recipe cards. Guests see published cards without the PDF icon (**FR-002**, **FR-006**). |
+| **UI scope**          | PDF icon on `RecipeCardComponent` only when `user` is in `localStorage`. Guest published-recipe view MUST NOT show download.                                                                                |
+| **Implementation**    | Client-side `RecipeReports.generateRecipePDF(recipe)` from the recipe card. Do not add `app/authorization/` helpers or a PDF controller for this feature.                                                   |
+
+
+---
+
+
+
+## Key Entities
+
+- **Recipe**: belongs to one user; name and stored ingredients/steps are what the PDF shows (Features 3–4 own create/edit)
+- **Recipe ingredient**: quantity plus catalog ingredient name and unit (Feature 4); listed on the PDF
+- **Recipe step**: step number, instruction, and ingredients used on that step (Feature 4); listed on the PDF
+- **User / Session**: Feature 1; required to show and click download — not modified here
+
+There is no PDF entity. The downloaded file is a local export, not a persisted row.
+
+---
+
+
+
+## API Requirements
+
+Mount prefix: `/recipeapi` (see `backend/server.js`). Flat JSON; errors `{ "message": "…" }`. Do not wrap in `{ success, data }`.
+
+This feature **does not add or change HTTP routes** (**FR-007**). There is no `GET /recipeapi/recipes/:id/pdf` (or similar). Generation runs in the browser and reuses Feature 4 list endpoints the recipe card already calls.
+
+
+| Method | Endpoint                                                   | Auth | Purpose in this feature                                              |
+| ------ | ---------------------------------------------------------- | ---- | -------------------------------------------------------------------- |
+| `GET`  | `/recipeapi/recipes/:recipeId/recipeIngredients/`          | No   | Load stored ingredients (quantity, unit, name) for the PDF (**FR-007**, **FR-005**) |
+| `GET`  | `/recipeapi/recipes/:recipeId/recipeStepsWithIngredients/` | No   | Load stored steps (step number, instruction, ingredients on that step) for the PDF (**FR-007**, **FR-005**) |
+
+
+Field-level list shapes stay [Feature 4](./feature-4-recipe-ingredients-management.md). This feature only requires those `GET`s to return the arrays used to fill **Ingredients** and **Steps** on the PDF.
+
+Recipe **name** is already on the recipe object shown on the recipes page (Feature 3). Do not add a PDF payload or content-type on the API.
+
+**Protected-route contract:** unchanged from Feature 1. This feature does not introduce a Bearer-protected PDF route.
+
+---
+
+
+
+## Screen Requirements
+
+Follow [ui-style-system.mdc](../.cursor/rules/ui-style-system.mdc) for theme tokens. Labels below match the running Recipe UI (`RecipeList` + `RecipeCardComponent`).
+
+### [View: Recipe list] — route name `recipes` (`/recipes`)
+
+Feature 3 owns add/edit/delete. Feature 4 owns expanding a card for read-only ingredients/steps. This feature owns the PDF download control on the card.
+
+- Heading: **Recipes** (unchanged)
+- Signed-in: each recipe card shows the PDF icon (`mdi-file-pdf-box`) when `user` is in `localStorage` (**FR-006**)
+- Guest / signed out: PDF icon MUST NOT appear (**FR-002**, **FR-006**)
+- No recipes: no recipe card → download is not available (**FR-001**)
+- Clicking the PDF icon MUST call PDF generation for that card’s recipe, open the browser save / file dialog so the user can choose location and file name (**FR-003**), and MUST NOT navigate away from `recipes`
+- Default suggested file name in the running generator is `recipeReport.pdf`; the user still chooses the final name and location
+- Pencil / **Add** / expand-for-details stay Features 3–4
+- **Error:** no new snackbar copy in this feature; do not invent empty-state text for “no recipes”
+
+### Generated PDF (not a Vue route)
+
+After save, opening the file MUST show:
+
+- `oc_logo.png` in the upper left (**FR-004**)
+- Recipe **name**
+- **Ingredients** list: quantity, unit, and name (**FR-005**)
+- **Steps** table: step number, instruction, and ingredients used on that step (**FR-005**)
+- Empty ingredients and/or steps → those sections are empty; save is not blocked
+
+### App chrome
+
+- Unchanged (`MenuBar` from Features 1–2). No new nav item for PDF.
+
+---
+
+
+
+## Data Model Requirements
+
+This feature adds **no tables or columns**. PDFs are not stored. Generation reads existing Feature 3–4 rows.
+
+Point at [Feature 3](./feature-3-recipe-management.md) for `recipes` (`name`, and the rest of the recipe row) and [Feature 4](./feature-4-recipe-ingredients-management.md) for `recipeIngredients` and `recipeSteps`. Catalog `ingredients` (`name`, `unit`) stay Feature 2.
+
+### Associations (unchanged; used as PDF input)
+
+- `Recipe` hasMany `RecipeIngredient` / `RecipeStep`
+- `RecipeIngredient` belongsTo `Ingredient` (name, unit on the Ingredients list)
+- `RecipeStep` has linked recipe ingredients (names on the Steps table)
+
+No `pdfs` table, no PDF blob column, no filename column on `recipes`.
+
+---
+
+
+
+## Acceptance Criteria
+
+
+
+### US-6.1 — Download a recipe as a PDF
+
+
+
+#### Scenario: Signed-in user downloads an existing recipe as a PDF
+
+- **Given** I am signed in with `user` in `localStorage`
+- **And** I have at least one recipe on the recipes page
+- **When** I click the PDF icon on that recipe card
+- **Then** the browser save / file dialog opens so I can choose a file name and location
+- **And** saving writes a PDF on my machine
+- **And** I remain on the recipes page
+
+
+
+#### Scenario: Guest cannot download a recipe PDF
+
+- **Given** I am on the recipes page and I am not signed in
+- **When** I view a recipe card
+- **Then** the PDF download icon is not shown
+
+
+
+#### Scenario: Signed-in user with no recipes cannot download a PDF
+
+- **Given** I am signed in with `user` in `localStorage`
+- **And** I have no recipes
+- **When** I am on the recipes page
+- **Then** there is no recipe card
+- **And** I cannot click download
+
+
+
+### US-6.2 — Open a downloaded recipe PDF
+
+
+
+#### Scenario: Opened recipe PDF shows the recipe name, ingredients, and steps
+
+- **Given** I have downloaded a PDF for a recipe that has ingredients and steps
+- **When** I open the PDF
+- **Then** I see the recipe name
+- **And** I see an **Ingredients** list with quantity, unit, and name
+- **And** I see a **Steps** table with step number, instruction, and ingredients used on that step
+
+
+
+#### Scenario: Opened recipe PDF has oc_logo.png in the upper left
+
+- **Given** I have downloaded a recipe PDF
+- **When** I open the PDF
+- **Then** `oc_logo.png` is in the upper left hand corner
+
+
+
+#### Scenario: Recipe with no ingredients or steps still downloads as a PDF
+
+- **Given** I am signed in with a recipe that has no ingredients and no steps
+- **When** I click the PDF icon and save
+- **Then** a PDF file is still written
+- **And** the Ingredients and Steps sections are empty rather than blocking save
+
+---
+
+
+
+## Test Coverage Map
+
+Each scenario above must map to at least one automated test.
+
+
+| Story  | Scenario                                                            | Test file                               | Test name                                                                       |
+| ------ | ------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------- |
+| US-6.1 | Signed-in user downloads an existing recipe as a PDF                | `frontend/tests/RecipePdf.test.js`      | `it("Signed-in user downloads an existing recipe as a PDF")`                    |
+| US-6.1 | Guest cannot download a recipe PDF                                  | `frontend/tests/RecipePdf.test.js`      | `it("Guest cannot download a recipe PDF")`                                      |
+| US-6.1 | Signed-in user with no recipes cannot download a PDF                | `frontend/tests/RecipePdf.test.js`      | `it("Signed-in user with no recipes cannot download a PDF")`                    |
+| US-6.2 | Opened recipe PDF shows the recipe name, ingredients, and steps     | `frontend/tests/RecipePdf.test.js`      | `it("Opened recipe PDF shows the recipe name, ingredients, and steps")`         |
+| US-6.2 | Opened recipe PDF has oc_logo.png in the upper left                 | `frontend/tests/RecipePdf.test.js`      | `it("Opened recipe PDF has oc_logo.png in the upper left")`                     |
+| US-6.2 | Recipe with no ingredients or steps still downloads as a PDF        | `frontend/tests/RecipePdf.test.js`      | `it("Recipe with no ingredients or steps still downloads as a PDF")`            |
+
+
+No backend test file: this feature has no PDF API (**FR-007**).
+
+---
+
+
+
+## Agent implementation request
+
+Copy when asking Cursor to implement this feature (`@` this file):
+
+```text
+Implement Feature 6 from @features/feature-6-download-recipe-pdf on branch `feature-6-download-recipe-pdf`.
+
+Follow layer order in @features/framework.md (models → routes → backend tests → frontend → frontend tests).
+Map every Gherkin scenario in the Test Coverage Map; run `npm test` before finishing.
+If API routes, payloads, schema, or product rules changed per this spec, update @features/reference/api.md, @features/reference/data-model.md, and/or @features/reference/behavior.md in the same PR to match shipped code.
+Complete Definition of Done and the merge checklist in @features/framework.md.
+Do not implement behavior not in this spec.
+```
+
+**Reference updates for this feature:** `features/reference/behavior.md` (PDF download rules). No new API or schema — do not add a PDF route to `api.md` or a PDF table to `data-model.md`.
+
+---
+
+
+
+## Definition of Done
+
+- [ ] Backend and frontend implemented per this spec (**FR-001**–**FR-007** satisfied)
+- [ ] **Success Criteria (SC-001**–**SC-004)** met
+- [ ] All mapped tests pass (`npm test`)
+- [ ] Test Coverage Map complete
+- [ ] `features/reference/data-model.md` updated (if schema changed)
+- [ ] `features/reference/api.md` updated (if API changed)
+- [ ] `features/reference/behavior.md` updated (if product rules changed)
+
+---
+
+
+
+## Out of Scope
+
+- A PDF download HTTP endpoint or storing PDF files on the server (**FR-007**)
+- Ingredient CRUD ([Feature 2](./feature-2-ingredients-management.md))
+- Recipe create/edit/delete ([Feature 3](./feature-3-recipe-management.md))
+- Adding or editing recipe steps and recipe-ingredient rows ([Feature 4](./feature-4-recipe-ingredients-management.md))
+- Publish toggle and guest published-recipe list ([Feature 5](./feature-5-published-recipe-management.md); guests cannot download)
+- Emailing, printing from a dedicated print view, or bulk download of multiple recipes
