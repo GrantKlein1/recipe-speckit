@@ -273,7 +273,30 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
       expect(Number(payload.quantity)).toBe(2);
       expect(payload.ingredientId).toBe(flour.id);
       expect(payload.recipeId).toBe(pancakes.id);
+      expect(payload.recipeStepId == null).toBe(true);
       expect(wrapper.text()).toContain("2 cups of Flour");
+    });
+
+    it("User closes add an ingredient to a recipe", async () => {
+      wrapper = mountView();
+      await flushPromises();
+      await openIngredientsAdd(wrapper);
+
+      await fieldByLabel(wrapper, "VTextField", "Quantity").vm.$emit(
+        "update:modelValue",
+        2
+      );
+      await fieldByLabel(wrapper, "VSelect", "Ingredients").vm.$emit(
+        "update:modelValue",
+        flour
+      );
+      await buttonsByText(wrapper, "Close")[0].trigger("click");
+      await flushPromises();
+
+      expect(
+        RecipeIngredientServices.addRecipeIngredient
+      ).not.toHaveBeenCalled();
+      expect(wrapper.text()).not.toContain("2 cups of Flour");
     });
 
     it("User adds a recipe ingredient with an empty quantity", async () => {
@@ -342,6 +365,26 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
       expect(payload.instruction).toBe("Mix the batter");
       expect(payload.recipeId).toBe(pancakes.id);
       expect(wrapper.text()).toContain("Mix the batter");
+    });
+
+    it("User closes add a step to a recipe via dialog", async () => {
+      wrapper = mountView();
+      await flushPromises();
+      await openStepsAdd(wrapper);
+
+      await fieldByLabel(wrapper, "VTextField", "Number").vm.$emit(
+        "update:modelValue",
+        1
+      );
+      await fieldByLabel(wrapper, "VTextarea", "Instruction").vm.$emit(
+        "update:modelValue",
+        "Mix the batter"
+      );
+      await buttonsByText(wrapper, "Close")[0].trigger("click");
+      await flushPromises();
+
+      expect(RecipeStepServices.addRecipeStep).not.toHaveBeenCalled();
+      expect(wrapper.text()).not.toContain("Mix the batter");
     });
 
     it("User adds a step linked to existing recipe ingredients", async () => {
@@ -461,6 +504,20 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
       expect(wrapper.text()).not.toContain("Eggs");
     });
 
+    it("Ingredient listing includes catalog name, unit, and price", async () => {
+      RecipeIngredientServices.getRecipeIngredientsForRecipe.mockResolvedValue({
+        data: [flourLine()],
+      });
+
+      wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain("2");
+      expect(wrapper.text()).toContain("cup");
+      expect(wrapper.text()).toContain("Flour");
+      expect(wrapper.text()).toContain("1.50");
+    });
+
     it("User only sees their own recipe ingredients", async () => {
       RecipeIngredientServices.getRecipeIngredientsForRecipe.mockResolvedValue({
         data: [flourLine()],
@@ -542,6 +599,24 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
       expect(rows[2]).toContain("3");
       expect(rows[2]).toContain("Plate it");
     });
+
+    it("Step listing includes linked recipe ingredients", async () => {
+      RecipeStepServices.getRecipeStepsForRecipeWithIngredients.mockResolvedValue(
+        {
+          data: [
+            mixStep({
+              recipeIngredient: [flourLine({ recipeStepId: 20 })],
+            }),
+          ],
+        }
+      );
+
+      wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain("Mix the batter");
+      expect(wrapper.text()).toContain("Flour");
+    });
   });
 
   describe("US-4.5 — Edit and remove ingredients", () => {
@@ -566,6 +641,40 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
         RecipeIngredientServices.updateRecipeIngredient
       ).toHaveBeenCalled();
       expect(wrapper.text()).toContain("3 cups of Flour");
+    });
+
+    it("User changes a recipe ingredient's catalog ingredient", async () => {
+      RecipeIngredientServices.getRecipeIngredientsForRecipe
+        .mockResolvedValueOnce({ data: [flourLine()] })
+        .mockResolvedValueOnce({
+          data: [
+            flourLine({
+              ingredientId: milk.id,
+              ingredient: milk,
+            }),
+          ],
+        });
+
+      wrapper = mountView();
+      await flushPromises();
+      await iconsByName(wrapper, "mdi-pencil")[0].trigger("click");
+      await flushPromises();
+
+      await fieldByLabel(wrapper, "VSelect", "Ingredients").vm.$emit(
+        "update:modelValue",
+        milk
+      );
+      await buttonsByText(wrapper, "Update Ingredient")[0].trigger("click");
+      await flushPromises();
+
+      expect(
+        RecipeIngredientServices.updateRecipeIngredient
+      ).toHaveBeenCalled();
+      const payload =
+        RecipeIngredientServices.updateRecipeIngredient.mock.calls[0][0];
+      expect(payload.ingredientId).toBe(milk.id);
+      expect(wrapper.text()).toContain("Milk");
+      expect(wrapper.text()).not.toContain("Flour");
     });
 
     it("User deletes a recipe ingredient", async () => {

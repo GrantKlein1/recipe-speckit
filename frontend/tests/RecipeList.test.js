@@ -115,4 +115,17 @@ describe("Feature 4 — Recipe Ingredients and Steps Management", () => {
       expect(wrapper.html()).not.toContain("openAddIngredient");
     });
   });
+
+  describe("US-4.2 — Add steps to a recipe", () => {
+    it("Add step is only available on Edit Recipe", async () => {
+      const vuetify = createVuetify({ components, directives });
+      wrapper = mount(RecipeList, {
+        global: { plugins: [vuetify] },
+      });
+      await flushPromises();
+
+      expect(wrapper.text()).not.toContain("Add Step");
+      expect(wrapper.html()).not.toContain("openAddStep");
+    });
+  });
 });

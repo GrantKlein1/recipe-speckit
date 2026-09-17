@@ -400,7 +400,7 @@ Feature 1 requires a session; otherwise redirect to `login`. Recipe name / servi
 - Titles: **Add Ingredient** / **Edit Ingredient**
 - Fields: **Quantity** (number, required), **Ingredients** (select of Feature 2 catalog; `item-title` `name`, return object)
 - Confirm: **Add Ingredient** or **Update Ingredient**
-- Dismiss: **Close** — returns to Edit Recipe with no create/update request (Gherkin cancel)
+- Dismiss: **Close** — returns to Edit Recipe with no create/update request
 - Empty **Quantity** or no catalog selection → inline validation; no create API request
 - Add posts `quantity`, `ingredientId`, `recipeId`; `recipeStepId` omitted → `null`
 - Edit may change **Quantity** and the selected catalog ingredient (FR-014)
@@ -420,7 +420,7 @@ Feature 1 requires a session; otherwise redirect to `login`. Recipe name / servi
 - Titles: **Add Step** / **Edit Step**
 - Fields: **Number** (`stepNumber`, required), **Instruction** (required, max 5000), **Ingredients** (multi-select of **this recipe’s existing** recipe ingredients; may be empty — FR-018)
 - Confirm: **Add Step** or **Update Step**
-- Dismiss: **Close**
+- Dismiss: **Close** — returns to Edit Recipe with no create/update request
 - Empty **Instruction** (and missing required create fields) → inline validation; no create API request
 - After the step is saved, selected recipe ingredients are `PUT` with `recipeStepId` set to that step
 
@@ -505,7 +505,7 @@ No `userId` on either table. Ownership is through the parent recipe (`recipes.us
 - **And** `recipeStepId` is `null`
 - **And** the Ingredients section shows `2 cups of Flour`
 
-#### Scenario: User cancels add an ingredient to a recipe
+#### Scenario: User closes add an ingredient to a recipe
 
 - **Given** I am signed in
 - **And** I own recipe `Pancakes`
@@ -612,14 +612,14 @@ No `userId` on either table. Ownership is through the parent recipe (`recipes.us
 - **Then** `POST /recipeapi/recipes/:recipeId/recipeSteps/` returns `200` with `stepNumber` `1`, `instruction` `Mix the batter`, and `recipeId` matching `Pancakes`
 - **And** the Steps section shows `Mix the batter`
 
-#### Scenario: User cancels add a step to a recipe via dialog
+#### Scenario: User closes add a step to a recipe via dialog
 
 - **Given** I am signed in
 - **And** I own recipe `Pancakes`
 - **When** I open Edit Recipe for `Pancakes`
 - **And** I click **Add** in the Steps section
 - **And** I enter number `1` and instruction `Mix the batter`
-- **And** I click **Cancel**
+- **And** I click **Close**
 - **Then** I return to the Recipe Edit page
 - **And** the Steps section does not show `Mix the batter`
 
@@ -893,7 +893,7 @@ Each scenario above must map to at least one automated test.
 | Story  | Scenario                                                                 | Test file                                  | Test name                                                                              |
 | ------ | ------------------------------------------------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------- |
 | US-4.1 | User adds an ingredient to a recipe via dialog                           | `frontend/tests/EditRecipe.test.js`        | `it("User adds an ingredient to a recipe via dialog")`                                 |
-| US-4.1 | User cancels add an ingredient to a recipe                               | `frontend/tests/EditRecipe.test.js`        | `it("User cancels add an ingredient to a recipe")`                                     |
+| US-4.1 | User closes add an ingredient to a recipe                               | `frontend/tests/EditRecipe.test.js`        | `it("User closes add an ingredient to a recipe")`                                     |
 | US-4.1 | User adds a recipe ingredient with an empty quantity                     | `frontend/tests/EditRecipe.test.js`        | `it("User adds a recipe ingredient with an empty quantity")`                           |
 | US-4.1 | User adds a recipe ingredient without selecting a catalog ingredient     | `frontend/tests/EditRecipe.test.js`        | `it("User adds a recipe ingredient without selecting a catalog ingredient")`           |
 | US-4.1 | Missing quantity on create is rejected by the API                        | `backend/tests/recipe-ingredients.test.js` | `it("Missing quantity on create is rejected by the API")`                              |
@@ -905,6 +905,7 @@ Each scenario above must map to at least one automated test.
 | US-4.1 | Client cannot assign a recipe ingredient to another user on create       | `backend/tests/recipe-ingredients.test.js` | `it("Client cannot assign a recipe ingredient to another user on create")`             |
 | US-4.1 | Unauthenticated create of a recipe ingredient returns 401                | `backend/tests/recipe-ingredients.test.js` | `it("Unauthenticated create of a recipe ingredient returns 401")`                      |
 | US-4.2 | User adds a step to a recipe via dialog                                  | `frontend/tests/EditRecipe.test.js`        | `it("User adds a step to a recipe via dialog")`                                        |
+| US-4.2 | User closes add a step to a recipe via dialog                            | `frontend/tests/EditRecipe.test.js`        | `it("User closes add a step to a recipe via dialog")`                                  |
 | US-4.2 | User adds a step linked to existing recipe ingredients                   | `frontend/tests/EditRecipe.test.js`        | `it("User adds a step linked to existing recipe ingredients")`                         |
 | US-4.2 | User adds a recipe step with an empty instruction                        | `frontend/tests/EditRecipe.test.js`        | `it("User adds a recipe step with an empty instruction")`                              |
 | US-4.2 | Missing stepNumber or instruction on create is rejected by the API       | `backend/tests/recipe-steps.test.js`       | `it("Missing stepNumber or instruction on create is rejected by the API")`             |
