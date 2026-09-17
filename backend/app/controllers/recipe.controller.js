@@ -8,29 +8,29 @@ const Op = db.Sequelize.Op;
 exports.create = (req, res) => {
   // Validate request
   if (req.body.name === undefined) {
-    const error = new Error("Name cannot be empty for recipe!");
-    error.statusCode = 400;
-    throw error;
+    return res.status(400).send({
+      message: "Name cannot be empty for recipe!",
+    });
   } else if (req.body.description === undefined) {
-    const error = new Error("Description cannot be empty for recipe!");
-    error.statusCode = 400;
-    throw error;
+    return res.status(400).send({
+      message: "Description cannot be empty for recipe!",
+    });
   } else if (req.body.servings === undefined) {
-    const error = new Error("Servings cannot be empty for recipe!");
-    error.statusCode = 400;
-    throw error;
+    return res.status(400).send({
+      message: "Servings cannot be empty for recipe!",
+    });
   } else if (req.body.time === undefined) {
-    const error = new Error("Time cannot be empty for recipe!");
-    error.statusCode = 400;
-    throw error;
+    return res.status(400).send({
+      message: "Time cannot be empty for recipe!",
+    });
   } else if (req.body.isPublished === undefined) {
-    const error = new Error("Is Published cannot be empty for recipe!");
-    error.statusCode = 400;
-    throw error;
+    return res.status(400).send({
+      message: "Is Published cannot be empty for recipe!",
+    });
   } else if (req.body.userId === undefined) {
-    const error = new Error("User Id cannot be empty for recipe!");
-    error.statusCode = 400;
-    throw error;
+    return res.status(400).send({
+      message: "User Id cannot be empty for recipe!",
+    });
   }
 
   // Create a Recipe
@@ -221,27 +221,32 @@ exports.update = async (req, res) => {
   }
 };
 // Delete a Recipe with the specified id in the request
-exports.delete = (req, res) => {
+exports.delete = async (req, res) => {
   const id = req.params.id;
-  Recipe.destroy({
-    where: { id: id },
-  })
-    .then((number) => {
-      if (number == 1) {
-        res.send({
-          message: "Recipe was deleted successfully!",
-        });
-      } else {
-        res.send({
-          message: `Cannot delete Recipe with id=${id}. Maybe Recipe was not found!`,
-        });
-      }
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message: err.message || "Could not delete Recipe with id=" + id,
+  try {
+    const existing = await Recipe.findByPk(id);
+    if (!existing || existing.userId !== req.user?.id) {
+      return res.status(404).send({
+        message: `Cannot find Recipe with id=${id}.`,
       });
+    }
+    const number = await Recipe.destroy({
+      where: { id: id, userId: req.user.id },
     });
+    if (number == 1) {
+      res.send({
+        message: "Recipe was deleted successfully!",
+      });
+    } else {
+      res.send({
+        message: `Cannot delete Recipe with id=${id}. Maybe Recipe was not found!`,
+      });
+    }
+  } catch (err) {
+    res.status(500).send({
+      message: err.message || "Could not delete Recipe with id=" + id,
+    });
+  }
 };
 // Delete all Recipes from the database.
 exports.deleteAll = (req, res) => {

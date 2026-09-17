@@ -215,6 +215,7 @@ For this course, **you** write the requirements half and the **data model**. You
 | --- | ---------------------------------------------- | ---------------------------------- | ---------- |
 | 1   | `features/feature-1-account-management.md`     | `feature-1-account-management`     | —          |
 | 2   | [feature-2-ingredients-management.md](features/feature-2-ingredients-management.md) | `feature/2-ingredients-management` | Feature 1  |
+| 3   | [feature-3-recipe-management.md](features/feature-3-recipe-management.md) | `feature-3-recipe-management` | Feature 1  |
 
 
 | 4   | [features/feature-4-recipe-ingredient-management](features/feature-4-recipe-ingredients-management.md) | `feature/4-recipe-ingredient-management`  | Feature 1—3 |
