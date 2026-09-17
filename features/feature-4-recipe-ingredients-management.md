@@ -12,6 +12,7 @@
 ## User Stories
 
 ### US-4.1: Add ingredients to a recipe
+
 **As a** signed-in user  
 **I want to** add recipe ingredients to a recipe from its ingredient dialog  
 **So that** I can track what ingredients are needed for a recipe
@@ -21,6 +22,7 @@
 **Acceptance scenarios:** see ### US-4.1 under Acceptance Criteria
 
 ### US-4.2: Add steps to a recipe
+
 **As a** signed-in user  
 **I want to** add recipe step to a recipe from its step dialog  
 **So that** I can track what steps are needed for a recipe
@@ -30,6 +32,7 @@
 **Acceptance scenarios:** see ### US-4.2 under Acceptance Criteria
 
 ### US-4.3: View ingredients in a recipe
+
 **As a** signed-in user  
 **I want to** open a recipe's ingredient dialog and see all ingredients for that recipe  
 **So that** I know what ingredients belongs to that group
@@ -39,6 +42,7 @@
 **Acceptance scenarios:** see ### US-4.3 under Acceptance Criteria
 
 ### US-4.4: View steps in a recipe
+
 **As a** signed-in user  
 **I want to** open a recipe's step dialog and see all steps for that recipe  
 **So that** I know what step belongs to that group
@@ -48,6 +52,7 @@
 **Acceptance scenarios:** see ### US-4.4 under Acceptance Criteria
 
 ### US-4.5: Edit and remove ingredients
+
 **As a** signed-in user  
 **I want to** edit or delete individual ingredients  
 **So that** I can keep my recipe accurate
@@ -57,6 +62,7 @@
 **Acceptance scenarios:** see ### US-4.5 under Acceptance Criteria
 
 ### US-4.6: Edit and remove steps
+
 **As a** signed-in user  
 **I want to** edit or delete individual steps  
 **So that** I can keep my recipe accurate
@@ -66,6 +72,7 @@
 **Acceptance scenarios:** see ### US-4.6 under Acceptance Criteria
 
 ### US-4.7: recipes carry their steps
+
 **As a** signed-in user  
 **I want** deleting a recipe to remove its recipe steps  
 **So that** I do not leave orphaned steps in the database
@@ -76,7 +83,11 @@
 
 ---
 
+
+
 ## Requirements
+
+
 
 ### Functional Requirements
 
@@ -103,11 +114,15 @@
 
 ---
 
+
+
 ## Assumptions
 
 - Features 1–2-3 MUST be merged to `dev` before implementing this feature (auth, recipes, ingredients, single-view dashboard, `MenuBar` with sign-out).
 - Published recipes are out of scope (Feature 5).
 - No drag-and-drop reorder, search, or sharing.
+
+
 
 ## Edge Cases
 
@@ -124,6 +139,8 @@
 - Delete a recipe ingredient → catalog ingredient remains (FR-015).
 - Delete a recipe that has steps and ingredients → those steps and recipe ingredients are removed (FR-019).
 
+
+
 ## Success Criteria
 
 - **SC-001**: Every Gherkin scenario has at least one automated test before merge.
@@ -133,23 +150,25 @@
 
 ---
 
+
+
 ## Data Ownership & Isolation
 
-
-
 ---
+
+
 
 ## API Requirements
 
-
-
 ---
+
+
 
 ## Screen Requirements
 
-
-
 ---
+
+
 
 ## Key Entities
 
@@ -161,229 +180,461 @@
 
 ---
 
+
+
 ## Data Model Requirements
 
+
+
 ### `recipeSteps` table
-| Field | Type | Rules |
-|-------|------|-------|
-| `id` | INTEGER PK | Auto-increment |
-| `recipeId` | INTEGER FK | Required; references `recipes.id`; cascade on recipe delete |
-| `stepNumber` | INTEGER | Required |
-| `instruction` | STRING(5000) | Required; max 5000 chars |
-| `createdAt` | DATE | Sequelize timestamps |
-| `updatedAt` | DATE | Sequelize timestamps |
+
+
+| Field         | Type         | Rules                                                       |
+| ------------- | ------------ | ----------------------------------------------------------- |
+| `id`          | INTEGER PK   | Auto-increment                                              |
+| `recipeId`    | INTEGER FK   | Required; references `recipes.id`; cascade on recipe delete |
+| `stepNumber`  | INTEGER      | Required                                                    |
+| `instruction` | STRING(5000) | Required; max 5000 chars                                    |
+| `createdAt`   | DATE         | Sequelize timestamps                                        |
+| `updatedAt`   | DATE         | Sequelize timestamps                                        |
+
+
+
 
 ### `recipeIngredients` table
-| Field | Type | Rules |
-|-------|------|-------|
-| `id` | INTEGER PK | Auto-increment |
-| `recipeId` | INTEGER FK | Required; references `recipes.id`; cascade on recipe delete |
-| `ingredientId` | INTEGER FK | Required; references `ingredients.id` |
+
+
+| Field          | Type       | Rules                                                                         |
+| -------------- | ---------- | ----------------------------------------------------------------------------- |
+| `id`           | INTEGER PK | Auto-increment                                                                |
+| `recipeId`     | INTEGER FK | Required; references `recipes.id`; cascade on recipe delete                   |
+| `ingredientId` | INTEGER FK | Required; references `ingredients.id`                                         |
 | `recipeStepId` | INTEGER FK | Optional; references `recipeSteps.id`; null if the line is not tied to a step |
-| `quantity` | FLOAT | Required |
-| `createdAt` | DATE | Sequelize timestamps |
-| `updatedAt` | DATE | Sequelize timestamps |
+| `quantity`     | FLOAT      | Required                                                                      |
+| `createdAt`    | DATE       | Sequelize timestamps                                                          |
+| `updatedAt`    | DATE       | Sequelize timestamps                                                          |
+
 
 No `userId` on either table. Ownership is through the parent recipe (`recipes.userId`).
 
 ### Associations (add to `models/index.js`)
-*   `Recipe hasMany RecipeStep` — `onDelete: CASCADE`
-*   `RecipeStep belongsTo Recipe`
-*   `Recipe hasMany RecipeIngredient` — `onDelete: CASCADE`
-*   `RecipeIngredient belongsTo Recipe`
-*   `Ingredient hasMany RecipeIngredient`
-*   `RecipeIngredient belongsTo Ingredient`
-*   `RecipeStep hasMany RecipeIngredient`
-*   `RecipeIngredient belongsTo RecipeStep` — `recipeStepId` optional (`allowNull: true`)
+
+- `Recipe hasMany RecipeStep` — `onDelete: CASCADE`
+- `RecipeStep belongsTo Recipe`
+- `Recipe hasMany RecipeIngredient` — `onDelete: CASCADE`
+- `RecipeIngredient belongsTo Recipe`
+- `Ingredient hasMany RecipeIngredient`
+- `RecipeIngredient belongsTo Ingredient`
+- `RecipeStep hasMany RecipeIngredient`
+- `RecipeIngredient belongsTo RecipeStep` — `recipeStepId` optional (`allowNull: true`)
 
 ---
+
+
 
 ## Acceptance Criteria (Gherkin)
 
 ### US-4.1 — Add ingredients to a recipe
 
-#### Scenario: User adds a todo to a list via dialog
-*   **Given** I am signed in on the dashboard
-*   **And** I own list `Groceries`
-*   **When** I click the **Items** icon on the `Groceries` row
-*   **And** I click **+ Add Item**
-*   **And** I enter todo title `Buy milk`
-*   **And** I confirm the add-item dialog
-*   **Then** the API returns `201` with a todo object where `completed` is `false`
-*   **And** the returned `userId` matches my authenticated user ID
-*   **And** the returned `listId` matches `Groceries`
-*   **And** `Buy milk` appears in the list-items dialog
+#### Scenario: User adds an ingredient to a recipe via dialog
 
-#### Scenario: User adds a todo with an empty title
-*   **Given** I am signed in
-*   **And** I have opened the items dialog for an owned list
-*   **When** I open the add-item dialog
-*   **And** I leave the todo title empty
-*   **And** I attempt to confirm
-*   **Then** inline validation blocks the request
-*   **And** I see the message **"Todo title is required."**
-*   **And** no API request is sent
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **And** catalog ingredient `Flour` exists (unit `cup`, price per unit `1.50`)
+- **When** I open Edit Recipe for `Pancakes`
+- **And** I click **Add** in the Ingredients section
+- **And** I enter quantity `2` and select `Flour`
+- **And** I click **Add Ingredient**
+- **Then** `POST /recipeapi/recipes/:recipeId/recipeIngredients/` returns `200` with `quantity` `2`, `ingredientId` matching `Flour`, and `recipeId` matching `Pancakes`
+- **And** `recipeStepId` is `null`
+- **And** the Ingredients section shows `2 cups of Flour`
 
-#### Scenario: Add item is only available inside the items dialog
-*   **Given** I am signed in on the dashboard
-*   **And** the list-items dialog is not open
-*   **When** I view the lists view
-*   **Then** I do not see an add-todo field or **+ Add Item** control on the main lists view
+#### Scenario: User cancels add an ingredient to a recipe
 
----
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **And** catalog ingredient `Flour` exists (unit `cup`, price per unit `1.50`)
+- **When** I open Edit Recipe for `Pancakes`
+- **And** I click **Add** in the Ingredients section
+- **And** I enter quantity `2` and select `Flour`
+- **And** I click **Close**
+- **Then** I return to the Recipe Edit page
+- **And** the Ingredients section does not show `2 cups of Flour`
 
-### US-4.2: Add steps to a recipe
+#### Scenario: User adds a recipe ingredient with an empty quantity
 
-#### Scenario: List items dialog shows empty state
-*   **Given** I am signed in
-*   **And** I own an empty list `Personal`
-*   **When** I open the items dialog for `Personal`
-*   **And** the todos finish loading
-*   **Then** I see **"No todos in this list yet."**
+- **Given** I am signed in on Edit Recipe for an owned recipe
+- **And** I have opened the **Add Ingredient** dialog
+- **And** I have selected catalog ingredient `Flour`
+- **When** I leave **Quantity** empty
+- **And** I click **Add Ingredient**
+- **Then** inline validation blocks the request
+- **And** no create API request is sent
 
-#### Scenario: User opens items for different lists
-*   **Given** I am signed in
-*   **And** list `Work` has todos `Email client` and `Write report`
-*   **And** list `Personal` has todo `Call mom`
-*   **When** I open the items dialog for `Personal`
-*   **Then** I see only `Call mom`
-*   **When** I close the items dialog
-*   **And** I open the items dialog for `Work`
-*   **Then** I see `Email client` and `Write report`
+#### Scenario: User adds a recipe ingredient without selecting a catalog ingredient
 
-#### Scenario: User only sees their own todos when opening items
-*   **Given** I am signed in as user A
-*   **And** I own list `Work` with todo `My task`
-*   **And** user B owns list `Work` with todo `Their task` (same list name, different owner)
-*   **When** I open the items dialog for my `Work` list
-*   **Then** I see only `My task`
-*   **And** I do not see `Their task`
+- **Given** I am signed in on Edit Recipe for an owned recipe
+- **And** I have opened the **Add Ingredient** dialog
+- **And** I have entered quantity `2`
+- **When** I click **Add Ingredient** without selecting an ingredient
+- **Then** inline validation blocks the request
+- **And** no create API request is sent
 
----
+#### Scenario: Missing quantity on create is rejected by the API
 
-### US-4.3: View ingredients in a recipe
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **When** I send `POST /recipeapi/recipes/:recipeId/recipeIngredients/` without `quantity`
+- **Then** the API returns `400` with `{ "message": "Quantity cannot be empty for recipe ingredient!" }`
+- **And** no recipe ingredient is created
 
-#### Scenario: User marks a todo as complete
-*   **Given** I am signed in
-*   **And** I have opened the items dialog for a list containing todo `Buy milk` with `completed: false`
-*   **When** I check the todo's checkbox
-*   **Then** the API returns `200` with `completed: true`
-*   **And** the todo displays as completed (struck-through or muted)
+#### Scenario: Missing ingredientId on create is rejected by the API
 
-#### Scenario: User marks a completed todo as incomplete
-*   **Given** I am signed in
-*   **And** I have opened the items dialog for a list containing todo `Buy milk` with `completed: true`
-*   **When** I uncheck the todo's checkbox
-*   **Then** the API returns `200` with `completed: false`
-*   **And** the todo displays as active again
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **When** I send `POST /recipeapi/recipes/:recipeId/recipeIngredients/` without `ingredientId`
+- **Then** the API returns `400` with `{ "message": "Ingredient ID cannot be empty for recipe ingredient!" }`
+- **And** no recipe ingredient is created
 
----
+#### Scenario: Unknown catalog ingredientId is rejected
 
-### US-4.4: View steps in a recipe
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **When** I send `POST /recipeapi/recipes/:recipeId/recipeIngredients/` with an `ingredientId` that does not exist
+- **Then** the API returns `400` or `404`
+- **And** no recipe ingredient is created
+- **And** no new catalog ingredient is created
 
-#### Scenario: User edits a todo title
-*   **Given** I am signed in
-*   **And** I have opened the items dialog for a list containing todo `Buy milk`
-*   **When** I click the edit icon on `Buy milk`
-*   **And** I change the title to `Buy oat milk` in the edit dialog
-*   **And** I confirm
-*   **Then** the API returns `200` with the updated title
-*   **And** the list-items dialog shows `Buy oat milk`
+#### Scenario: Recipe ingredient is stored without a step when recipeStepId is omitted
 
-#### Scenario: User deletes a todo
-*   **Given** I am signed in
-*   **And** I have opened the items dialog for a list containing todo `Buy milk`
-*   **When** I click the delete icon on `Buy milk`
-*   **And** I confirm
-*   **Then** the API returns `200` or `204`
-*   **And** the todo is removed from the list-items dialog
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **When** I create a recipe ingredient without `recipeStepId`
+- **Then** the saved row has `recipeStepId` `null`
 
----
+#### Scenario: Add ingredient is only available on Edit Recipe
 
-### US-4.5: Edit and remove ingredients
+- **Given** I am signed in on the recipes list
+- **And** the Edit Recipe screen is not open
+- **When** I view the recipes list
+- **Then** I do not see an **Add Ingredient** control or add-ingredient dialog on the recipes list
 
-#### Scenario: User cannot read todos in another user's list
-*   **Given** I am signed in as user A
-*   **And** user B owns list `Secret` with todo `Hidden task`
-*   **When** I request `GET /todo/lists/:listId/todos` with user B's list ID
-*   **Then** the API returns `404` with `{ "message": "List with id=<id> not found." }`
-*   **And** `Hidden task` is not returned to user A
+#### Scenario: User cannot add an ingredient to another user's recipe
 
-#### Scenario: User attempts to add a todo to another user's list
-*   **Given** I am signed in as user A
-*   **And** a list exists that belongs to user B
-*   **When** I send `POST /todo/lists/:listId/todos` with user B's list ID and body `{ "title": "Intruder task" }`
-*   **Then** the API returns `404` with `{ "message": "List with id=<id> not found." }`
-*   **And** no todo is created in user B's list
+- **Given** I am signed in as user A
+- **And** user B owns recipe `Secret Cake`
+- **When** I send `POST /recipeapi/recipes/:recipeId/recipeIngredients/` with user B's recipe ID
+- **Then** the API returns `404` with `{ "message": "Cannot find Recipe with id=<id>." }`
+- **And** no recipe ingredient is created on user B's recipe
 
-#### Scenario: User attempts to rename another user's todo
-*   **Given** I am signed in as user A
-*   **And** a todo exists that belongs to user B
-*   **When** I send `PUT /todo/todos/:id` with body `{ "title": "Hijacked" }`
-*   **Then** the API returns `404` with `{ "message": "Todo with id=<id> not found." }`
-*   **And** user B's todo title is unchanged in the database
+#### Scenario: Client cannot assign a recipe ingredient to another user on create
 
-#### Scenario: User attempts to delete another user's todo
-*   **Given** I am signed in as user A
-*   **And** a todo exists that belongs to user B
-*   **When** I send `DELETE /todo/todos/:id`
-*   **Then** the API returns `404` with `{ "message": "Todo with id=<id> not found." }`
-*   **And** user B's todo still exists
+- **Given** I am signed in as user A
+- **And** I own recipe `Pancakes`
+- **When** I send `POST /recipeapi/recipes/:recipeId/recipeIngredients/` with a body that includes `"userId": 999`
+- **Then** the API returns `200` with a recipe ingredient on my recipe `Pancakes`
+- **And** ownership remains user A's via the parent recipe (no `userId` stored on the recipe ingredient)
 
-#### Scenario: Client cannot assign a todo to another user on create
-*   **Given** I am signed in as user A
-*   **And** I own list `Groceries`
-*   **When** I send `POST /todo/lists/:listId/todos` with body `{ "title": "Buy milk", "userId": 999 }` where user `999` is a different user
-*   **Then** the API returns `201` with a todo owned by user A
-*   **And** the saved `userId` is user A's ID, not `999`
+#### Scenario: Unauthenticated create of a recipe ingredient returns 401
 
-#### Scenario: Unauthenticated API request for todos
-*   **Given** I have no valid session token
-*   **When** I request `GET /todo/lists/1/todos`
-*   **Then** the API returns `401` with an unauthorized message
+- **Given** I have no valid session token
+- **When** I send `POST /recipeapi/recipes/1/recipeIngredients/`
+- **Then** the API returns `401`
 
 ---
 
-### US-4.6: Edit and remove steps
+### US-4.2 — Add steps to a recipe
 
-#### Scenario: Deleting a list removes its todos
-*   **Given** I am signed in
-*   **And** I own list `Groceries` with todos `Buy milk` and `Buy eggs`
-*   **When** I delete list `Groceries` and confirm
-*   **Then** both todos are removed from the database
-*   **And** they no longer appear if the list ID were still queried
+#### Scenario: User adds a step to a recipe via dialog
+
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **When** I open Edit Recipe for `Pancakes`
+- **And** I click **Add** in the Steps section
+- **And** I enter number `1` and instruction `Mix the batter`
+- **And** I click **Add Step**
+- **Then** `POST /recipeapi/recipes/:recipeId/recipeSteps/` returns `200` with `stepNumber` `1`, `instruction` `Mix the batter`, and `recipeId` matching `Pancakes`
+- **And** the Steps section shows `Mix the batter`
+
+#### Scenario: User adds a step linked to existing recipe ingredients
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** `Pancakes` already has recipe ingredient `Flour`
+- **When** I add a step with instruction `Mix the batter` and select `Flour` in the step's **Ingredients** field
+- **And** I click **Add Step**
+- **Then** the step is created
+- **And** the `Flour` recipe ingredient has `recipeStepId` set to that step
+- **And** the Steps section shows `Flour` on that step
+
+#### Scenario: User adds a recipe step with an empty instruction
+
+- **Given** I am signed in on Edit Recipe for an owned recipe
+- **And** I have opened the **Add Step** dialog
+- **And** I have entered number `1`
+- **When** I leave **Instruction** empty
+- **And** I click **Add Step**
+- **Then** inline validation blocks the request
+- **And** no create API request is sent
+
+#### Scenario: Missing stepNumber or instruction on create is rejected by the API
+
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **When** I send `POST /recipeapi/recipes/:recipeId/recipeSteps/` without `stepNumber` or without `instruction`
+- **Then** the API returns `400`
+- **And** no recipe step is created
+
+#### Scenario: Instruction longer than 5000 characters is rejected
+
+- **Given** I am signed in
+- **And** I own recipe `Pancakes`
+- **When** I send `POST /recipeapi/recipes/:recipeId/recipeSteps/` with `instruction` longer than 5000 characters
+- **Then** the API returns `400`
+- **And** no recipe step is created
+
+#### Scenario: Add step is only available on Edit Recipe
+
+- **Given** I am signed in on the recipes list
+- **And** the Edit Recipe screen is not open
+- **When** I view the recipes list
+- **Then** I do not see an **Add Step** control or add-step dialog on the recipes list
+
+#### Scenario: User cannot add a step to another user's recipe
+
+- **Given** I am signed in as user A
+- **And** user B owns recipe `Secret Cake`
+- **When** I send `POST /recipeapi/recipes/:recipeId/recipeSteps/` with user B's recipe ID
+- **Then** the API returns `404`
+- **And** no recipe step is created on user B's recipe
+
+#### Scenario: Unauthenticated create of a recipe step returns 401
+
+- **Given** I have no valid session token
+- **When** I send `POST /recipeapi/recipes/1/recipeSteps/`
+- **Then** the API returns `401`
 
 ---
 
-### US-4.7: recipes carry their steps
+### US-4.3 — View ingredients in a recipe
 
-#### Scenario: Deleting a list removes its todos
-*   **Given** I am signed in
-*   **And** I own list `Groceries` with todos `Buy milk` and `Buy eggs`
-*   **When** I delete list `Groceries` and confirm
-*   **Then** both todos are removed from the database
-*   **And** they no longer appear if the list ID were still queried
+#### Scenario: Ingredients section shows an empty recipe
+
+- **Given** I am signed in
+- **And** I own recipe `Pancakes` with no recipe ingredients
+- **When** I open Edit Recipe for `Pancakes`
+- **Then** I see the **Ingredients** section
+- **And** I do not see any catalog ingredient names in that section
+
+#### Scenario: User opens ingredients for different recipes
+
+- **Given** I am signed in
+- **And** my recipe `Pancakes` has recipe ingredient `Flour`
+- **And** my recipe `Omelette` has recipe ingredient `Eggs`
+- **When** I open Edit Recipe for `Omelette`
+- **Then** I see `Eggs` and I do not see `Flour`
+- **When** I open Edit Recipe for `Pancakes`
+- **Then** I see `Flour` and I do not see `Eggs`
+
+#### Scenario: Ingredient listing includes catalog name, unit, and price
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** `Pancakes` has `2` cups of `Flour` at `1.50` per cup
+- **When** the ingredients finish loading
+- **Then** I see quantity `2`, unit `cup`, name `Flour`, and price per unit `1.50`
+
+#### Scenario: User only sees their own recipe ingredients
+
+- **Given** I am signed in as user A
+- **And** I own recipe `Pancakes` with recipe ingredient `Flour`
+- **And** user B owns a recipe with recipe ingredient `Sugar`
+- **When** I open Edit Recipe for my `Pancakes` recipe
+- **Then** I see `Flour`
+- **And** I do not see `Sugar`
 
 ---
+
+### US-4.4 — View steps in a recipe
+
+#### Scenario: Steps section shows an empty recipe
+
+- **Given** I am signed in
+- **And** I own recipe `Pancakes` with no recipe steps
+- **When** I open Edit Recipe for `Pancakes`
+- **Then** I see the **Steps** section
+- **And** I do not see step instructions in that section
+
+#### Scenario: User opens steps for different recipes
+
+- **Given** I am signed in
+- **And** my recipe `Pancakes` has step `Mix the batter`
+- **And** my recipe `Omelette` has step `Whisk the eggs`
+- **When** I open Edit Recipe for `Omelette`
+- **Then** I see `Whisk the eggs` and I do not see `Mix the batter`
+- **When** I open Edit Recipe for `Pancakes`
+- **Then** I see `Mix the batter` and I do not see `Whisk the eggs`
+
+#### Scenario: Recipe steps are listed by step number ascending
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** `Pancakes` has steps `1 Mix the batter`, `2 Heat the pan`, and `3 Plate it`
+- **When** the steps finish loading
+- **Then** I see them in order `1`, `2`, `3`
+
+#### Scenario: Step listing includes linked recipe ingredients
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** step `Mix the batter` is linked to recipe ingredient `Flour`
+- **When** the steps finish loading
+- **Then** that step row shows `Flour`
+
+---
+
+### US-4.5 — Edit and remove ingredients
+
+#### Scenario: User edits a recipe ingredient quantity
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** `Pancakes` has `2 cups of Flour`
+- **When** I click the edit icon on that ingredient
+- **And** I change **Quantity** to `3`
+- **And** I click **Update Ingredient**
+- **Then** `PUT /recipeapi/recipes/:recipeId/recipeIngredients/:id` returns `200`
+- **And** the Ingredients section shows `3 cups of Flour`
+
+#### Scenario: User changes a recipe ingredient's catalog ingredient
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** `Pancakes` has recipe ingredient `Flour`
+- **And** catalog ingredient `Milk` exists
+- **When** I edit that line and select `Milk`
+- **And** I click **Update Ingredient**
+- **Then** the saved `ingredientId` matches `Milk`
+- **And** the Ingredients section shows `Milk` instead of `Flour`
+
+#### Scenario: User deletes a recipe ingredient
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** `Pancakes` has recipe ingredient `Flour`
+- **When** I click the delete icon on that ingredient
+- **Then** `DELETE /recipeapi/recipes/:recipeId/recipeIngredients/:id` returns `200`
+- **And** `Flour` is no longer shown in the Ingredients section
+
+#### Scenario: Catalog ingredient remains after deleting a recipe line
+
+- **Given** I am signed in
+- **And** catalog ingredient `Flour` exists
+- **And** my recipe has a recipe ingredient that references `Flour`
+- **When** I delete that recipe ingredient
+- **Then** catalog ingredient `Flour` still exists
+
+#### Scenario: User cannot update another user's recipe ingredient
+
+- **Given** I am signed in as user A
+- **And** a recipe ingredient exists on user B's recipe
+- **When** I send `PUT /recipeapi/recipes/:recipeId/recipeIngredients/:id` for that row
+- **Then** the API returns `404`
+- **And** user B's recipe ingredient is unchanged
+
+#### Scenario: User cannot delete another user's recipe ingredient
+
+- **Given** I am signed in as user A
+- **And** a recipe ingredient exists on user B's recipe
+- **When** I send `DELETE /recipeapi/recipes/:recipeId/recipeIngredients/:id` for that row
+- **Then** the API returns `404`
+- **And** user B's recipe ingredient still exists
+
+#### Scenario: Unauthenticated update or delete of a recipe ingredient returns 401
+
+- **Given** I have no valid session token
+- **When** I send `PUT` or `DELETE` for a recipe ingredient
+- **Then** the API returns `401`
+
+---
+
+### US-4.6 — Edit and remove steps
+
+#### Scenario: User edits a recipe step
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** `Pancakes` has step `Mix the batter`
+- **When** I click the edit icon on that step
+- **And** I change **Instruction** to `Whisk the batter`
+- **And** I click **Update Step**
+- **Then** `PUT /recipeapi/recipes/:recipeId/recipeSteps/:id` returns `200`
+- **And** the Steps section shows `Whisk the batter`
+
+#### Scenario: User updates which ingredients are linked to a step
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** step `Mix the batter` is linked to `Flour`
+- **And** `Pancakes` also has unlinked recipe ingredient `Milk`
+- **When** I edit that step, select only `Milk`, and click **Update Step**
+- **Then** `Milk` has `recipeStepId` set to that step
+- **And** the Steps section shows `Milk` on that step
+
+#### Scenario: User deletes a recipe step
+
+- **Given** I am signed in on Edit Recipe for `Pancakes`
+- **And** `Pancakes` has step `Mix the batter`
+- **When** I click the delete icon on that step
+- **Then** `DELETE /recipeapi/recipes/:recipeId/recipeSteps/:id` returns `200`
+- **And** `Mix the batter` is no longer shown in the Steps section
+
+#### Scenario: User cannot update another user's recipe step
+
+- **Given** I am signed in as user A
+- **And** a recipe step exists on user B's recipe
+- **When** I send `PUT /recipeapi/recipes/:recipeId/recipeSteps/:id` for that step
+- **Then** the API returns `404`
+- **And** user B's step is unchanged
+
+#### Scenario: User cannot delete another user's recipe step
+
+- **Given** I am signed in as user A
+- **And** a recipe step exists on user B's recipe
+- **When** I send `DELETE /recipeapi/recipes/:recipeId/recipeSteps/:id` for that step
+- **Then** the API returns `404`
+- **And** user B's step still exists
+
+#### Scenario: Unauthenticated update or delete of a recipe step returns 401
+
+- **Given** I have no valid session token
+- **When** I send `PUT` or `DELETE` for a recipe step
+- **Then** the API returns `401`
+
+---
+
+### US-4.7 — recipes carry their steps
+
+#### Scenario: Deleting a recipe removes its steps and recipe ingredients
+
+- **Given** I am signed in
+- **And** I own recipe `Pancakes` with step `Mix the batter` and recipe ingredient `Flour`
+- **When** I delete recipe `Pancakes` and confirm
+- **Then** that step and that recipe ingredient are removed from the database
+- **And** catalog ingredient `Flour` still exists
+
+---
+
+
 
 ## Test Coverage Map
 
-
-
 ---
+
+
 
 ## Agent implementation request
 
-
-
 ---
+
+
 
 ## Definition of Done
 
-
-
 ---
 
-## Out of Scope
 
+
+## Out of Scope
 
