@@ -18,11 +18,14 @@ const user = ref({
   password: "",
 });
 
-onMounted(async () => {
-  localStorage.removeItem("user");
-  // if (localStorage.getItem("user") !== null) {
-  //   router.push({ name: "recipes" });
-  // }
+onMounted(() => {
+  const raw = localStorage.getItem("user");
+  if (raw !== null) {
+    const session = JSON.parse(raw);
+    if (session !== null && session.token) {
+      router.push({ name: "recipes" });
+    }
+  }
 });
 
 function navigateToRecipes() {
